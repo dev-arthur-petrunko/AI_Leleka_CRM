@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Leleka CRM — Дашборд (preview)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; }
+  header { background: #0f172a; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 20px; } header h1 span { color: #fbbf24; }
+  .badge { background: #fbbf24; color: #0f172a; font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 700; }
+  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .kpi .num { font-size: 32px; font-weight: 800; } .kpi .lbl { color: #64748b; font-size: 13px; margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+  .card h2 { font-size: 16px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+  th { color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .hot { background: #fee2e2; color: #b91c1c; } .warm { background: #fef3c7; color: #b45309; } .cold { background: #e0e7ff; color: #3730a3; }
+  .warn { background: #fff7ed; border-left: 4px solid #f97316; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+  .action { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
+  footer { text-align: center; color: #94a3b8; font-size: 12px; padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪶 AI Leleka CRM <span>дашборд</span></h1>
+  <div class="badge">PREVIEW · мок-дані · API: /analytics/dashboard</div>
+</header>
+<main>
+  <div class="kpis">
+    <div class="kpi"><div class="num">27</div><div class="lbl">Нові ліди (30 дн)</div></div>
+    <div class="kpi"><div class="num">18%</div><div class="lbl">Конверсія</div></div>
+    <div class="kpi"><div class="num">12 400 ₴</div><div class="lbl">Середній чек</div></div>
+    <div class="kpi"><div class="num">86 000 ₴</div><div class="lbl">Прогноз на місяць (AI)</div></div>
+  </div>
+  <div class="grid">
+    <div class="card"><h2>Воронка продажів</h2><canvas id="funnel"></canvas></div>
+    <div class="card"><h2>Дохід по місяцях + прогноз</h2><canvas id="forecast"></canvas></div>
+  </div>
+  <div class="grid">
+    <div class="card"><h2>🔥 Гарячі ліди (AI scoring)</h2>
+      <table><tr><th>Угода</th><th>Скор</th><th>Стадія</th></tr>
+      <tr><td>Замовлення #412</td><td><span class="pill hot">88 hot</span></td><td>negotiation</td></tr>
+      <tr><td>Замовлення #387</td><td><span class="pill hot">76 hot</span></td><td>negotiation</td></tr>
+      <tr><td>Замовлення #401</td><td><span class="pill warm">58 warm</span></td><td>contacted</td></tr>
+      <tr><td>Замовлення #395</td><td><span class="pill warm">44 warm</span></td><td>contacted</td></tr>
+      <tr><td>Замовлення #371</td><td><span class="pill cold">25 cold</span></td><td>new</td></tr>
+      </table>
+    </div>
+    <div class="card"><h2>⚠️ Ризик відтоку + наступні дії</h2>
+      <div class="warn">Петро — мовчить 34 дні (regular)</div>
+      <div class="warn">Надія — мовчить 29 днів (vip!)</div>
+      <div class="action">📞 Зателефонувати зараз: угода зависла 4 дн. (contacted)</div>
+      <div class="action">📝 Створити follow-up: переговори без відкритої задачі</div>
+    </div>
+  </div>
+  <div class="card"><h2>🤖 AI-інсайт</h2>
+    <p style="font-size:14px;color:#334155">Угод в роботі: 14, сума пайплайна: 212 000 грн. Найчастіша причина втрат — «ціна». Рекомендація: спочатку дзвонити гарячим (negotiation + свіжа активність).</p>
+  </div>
+</main>
+<footer>AI Leleka CRM · preview збігається з GET /analytics/dashboard · графіки: Chart.js (у проді — Recharts)</footer>
+<script>
+new Chart(document.getElementById('funnel'), { type: 'bar',
+  data: { labels: ['new', 'contacted', 'negotiation', 'won', 'lost'],
+    datasets: [{ data: [12, 8, 6, 5, 3], backgroundColor: ['#94a3b8','#60a5fa','#fbbf24','#16a34a','#ef4444'] }] },
+  options: { plugins: { legend: { display: false } } } });
+new Chart(document.getElementById('forecast'), { type: 'line',
+  data: { labels: ['Чер', 'Лип', 'Сер', 'Вер', 'Прогноз'],
+    datasets: [{ data: [64000, 72000, 81000, 78000, 86000], borderColor: '#16a34a', tension: .3, fill: false }] },
+  options: { plugins: { legend: { display: false } } } });
+</script>
+</body>
+</html>
