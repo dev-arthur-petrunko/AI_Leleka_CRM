@@ -2,80 +2,161 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Leleka CRM — Дашборд (preview)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Telegram WebApp</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f1f5f9; color: #0f172a; }
-  header { background: #0f172a; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-  header h1 { font-size: 20px; } header h1 span { color: #fbbf24; }
-  .badge { background: #fbbf24; color: #0f172a; font-size: 12px; padding: 4px 10px; border-radius: 20px; font-weight: 700; }
-  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .kpi { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  .kpi .num { font-size: 32px; font-weight: 800; } .kpi .lbl { color: #64748b; font-size: 13px; margin-top: 4px; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
-  .card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-  .card h2 { font-size: 16px; margin-bottom: 12px; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; }
-  th { color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; }
-  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
-  .hot { background: #fee2e2; color: #b91c1c; } .warm { background: #fef3c7; color: #b45309; } .cold { background: #e0e7ff; color: #3730a3; }
-  .warn { background: #fff7ed; border-left: 4px solid #f97316; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
-  .action { background: #f0fdf4; border-left: 4px solid #16a34a; padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; }
-  footer { text-align: center; color: #94a3b8; font-size: 12px; padding: 16px; }
+  :root {
+    --tg-bg: #e7ebef; --tg-card: #ffffff; --tg-text: #000000;
+    --tg-hint: #707579; --tg-link: #3390ec; --tg-btn: #3390ec; --tg-btn-text: #ffffff;
+    --tg-out: #d7e9f7; --tg-danger: #e53935; --tg-warn: #f2994a; --tg-ok: #31b545;
+    --tg-header: #ffffff; --tg-nav: #ffffff; --tg-sep: #dfe2e5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --tg-bg: #0e1621; --tg-card: #17212b; --tg-text: #ffffff;
+      --tg-hint: #7f91a4; --tg-link: #6ab2f2; --tg-btn: #2b5278; --tg-btn-text: #ffffff;
+      --tg-out: #2b5278; --tg-header: #17212b; --tg-nav: #17212b; --tg-sep: #0e1621;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, 'Roboto', 'Segoe UI', system-ui, sans-serif;
+    background: var(--tg-bg); color: var(--tg-text); padding-bottom: 76px; }
+  /* шапка як у чату Telegram */
+  .chat-header { position: sticky; top: 0; z-index: 10; background: var(--tg-header);
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+    border-bottom: 1px solid var(--tg-sep); }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #37aee2, #1e96c8);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .chat-header .name { font-weight: 600; font-size: 16px; }
+  .chat-header .status { font-size: 13px; color: var(--tg-link); }
+  .chat-header .preview-tag { margin-left: auto; font-size: 11px; color: var(--tg-hint);
+    border: 1px solid var(--tg-sep); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+  main { padding: 12px 12px 0; max-width: 640px; margin: 0 auto; }
+  .section-title { font-size: 13px; color: var(--tg-hint); text-transform: uppercase;
+    letter-spacing: .04em; padding: 14px 8px 6px; }
+  .card { background: var(--tg-card); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .card h2 { font-size: 15px; margin-bottom: 10px; }
+  /* KPI рядками як у Telegram-статистики */
+  .stat-row { display: flex; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--tg-sep); font-size: 15px; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+  .stat-row .val { margin-left: auto; font-weight: 600; }
+  /* бульбашки чату */
+  .bubble { max-width: 85%; padding: 9px 12px; border-radius: 14px; font-size: 14.5px;
+    line-height: 1.45; margin-bottom: 8px; }
+  .bubble.in { background: var(--tg-card); border-top-left-radius: 4px; }
+  .bubble.out { background: var(--tg-out); margin-left: auto; border-top-right-radius: 4px; }
+  .bubble .who { font-size: 12.5px; font-weight: 600; color: var(--tg-link); margin-bottom: 2px; }
+  .bubble .time { font-size: 11px; color: var(--tg-hint); text-align: right; margin-top: 2px; }
+  /* ліди */
+  .lead { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--tg-sep); font-size: 14.5px; }
+  .lead:last-child { border-bottom: none; }
+  .lead .ava { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; }
+  .lead .meta { font-size: 12.5px; color: var(--tg-hint); }
+  .lead .score { margin-left: auto; font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .score.hot { color: var(--tg-danger); } .score.warm { color: var(--tg-warn); } .score.cold { color: var(--tg-link); }
+  /* кнопки як у Bot API */
+  .tg-btn { display: block; width: 100%; border: none; border-radius: 10px; background: var(--tg-btn);
+    color: var(--tg-btn-text); font-size: 15px; font-weight: 600; padding: 12px; margin-top: 10px; cursor: pointer; }
+  .tg-btn.ghost { background: transparent; color: var(--tg-link); }
+  /* нижній таб-бар як у Telegram */
+  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--tg-nav);
+    border-top: 1px solid var(--tg-sep); display: flex; padding-bottom: env(safe-area-inset-bottom); }
+  .tab { flex: 1; text-align: center; padding: 8px 0 9px; font-size: 10.5px; color: var(--tg-hint); cursor: pointer; }
+  .tab .ico { font-size: 22px; display: block; }
+  .tab.active { color: var(--tg-link); font-weight: 600; }
+  footer { text-align: center; color: var(--tg-hint); font-size: 11.5px; padding: 12px; }
 </style>
 </head>
 <body>
-<header>
-  <h1>🪶 AI Leleka CRM <span>дашборд</span></h1>
-  <div class="badge">PREVIEW · мок-дані · API: /analytics/dashboard</div>
-</header>
+<div class="chat-header">
+  <div class="avatar">🪶</div>
+  <div><div class="name">AI Leleka CRM</div><div class="status" id="online">online</div></div>
+  <div class="preview-tag">preview · /analytics/dashboard</div>
+</div>
+
 <main>
-  <div class="kpis">
-    <div class="kpi"><div class="num">27</div><div class="lbl">Нові ліди (30 дн)</div></div>
-    <div class="kpi"><div class="num">18%</div><div class="lbl">Конверсія</div></div>
-    <div class="kpi"><div class="num">12 400 ₴</div><div class="lbl">Середній чек</div></div>
-    <div class="kpi"><div class="num">86 000 ₴</div><div class="lbl">Прогноз на місяць (AI)</div></div>
+  <div class="section-title">Панель приладів · сьогодні</div>
+  <div class="card">
+    <div class="stat-row"><span class="dot" style="background:#37aee2"></span>Нові ліди (30 дн)<span class="val">27</span></div>
+    <div class="stat-row"><span class="dot" style="background:#31b545"></span>Конверсія<span class="val">18%</span></div>
+    <div class="stat-row"><span class="dot" style="background:#f2994a"></span>Середній чек<span class="val">12 400 ₴</span></div>
+    <div class="stat-row"><span class="dot" style="background:#e53935"></span>Прогноз на місяць (AI)<span class="val">86 000 ₴</span></div>
   </div>
-  <div class="grid">
-    <div class="card"><h2>Воронка продажів</h2><canvas id="funnel"></canvas></div>
-    <div class="card"><h2>Дохід по місяцях + прогноз</h2><canvas id="forecast"></canvas></div>
+
+  <div class="section-title">Воронка продажів</div>
+  <div class="card"><canvas id="funnel" height="180"></canvas>
+    <button class="tg-btn" onclick="alert('У проді: відкриває список угод стадії')">Відкрити угоди</button>
   </div>
-  <div class="grid">
-    <div class="card"><h2>🔥 Гарячі ліди (AI scoring)</h2>
-      <table><tr><th>Угода</th><th>Скор</th><th>Стадія</th></tr>
-      <tr><td>Замовлення #412</td><td><span class="pill hot">88 hot</span></td><td>negotiation</td></tr>
-      <tr><td>Замовлення #387</td><td><span class="pill hot">76 hot</span></td><td>negotiation</td></tr>
-      <tr><td>Замовлення #401</td><td><span class="pill warm">58 warm</span></td><td>contacted</td></tr>
-      <tr><td>Замовлення #395</td><td><span class="pill warm">44 warm</span></td><td>contacted</td></tr>
-      <tr><td>Замовлення #371</td><td><span class="pill cold">25 cold</span></td><td>new</td></tr>
-      </table>
-    </div>
-    <div class="card"><h2>⚠️ Ризик відтоку + наступні дії</h2>
-      <div class="warn">Петро — мовчить 34 дні (regular)</div>
-      <div class="warn">Надія — мовчить 29 днів (vip!)</div>
-      <div class="action">📞 Зателефонувати зараз: угода зависла 4 дн. (contacted)</div>
-      <div class="action">📝 Створити follow-up: переговори без відкритої задачі</div>
-    </div>
+
+  <div class="section-title">AI-асистент</div>
+  <div class="bubble out">Лелеко, що по продажах? 👀<div class="time">09:41 ✓✓</div></div>
+  <div class="bubble in"><div class="who">🪶 Лелека AI</div>
+    Угод в роботі: <b>14</b> на <b>212 000 ₴</b>.<br>Топ: Замовлення #412 (hot 88).<br>⚠️ Надія (vip!) мовчить 29 днів — зателефонуй першою.<div class="time">09:41</div></div>
+
+  <div class="section-title">🔥 Гарячі ліди · AI scoring</div>
+  <div class="card">
+    <div class="lead"><div class="ava" style="background:#e53935">О</div><div>Замовлення #412<div class="meta">negotiation · активність сьогодні</div></div><span class="score hot">88</span></div>
+    <div class="lead"><div class="ava" style="background:#f2994a">Т</div><div>Замовлення #387<div class="meta">negotiation · вчора</div></div><span class="score hot">76</span></div>
+    <div class="lead"><div class="ava" style="background:#37aee2">І</div><div>Замовлення #401<div class="meta">contacted · 2 дні тому</div></div><span class="score warm">58</span></div>
+    <div class="lead"><div class="ava" style="background:#7f91a4">М</div><div>Замовлення #371<div class="meta">new · 5 днів тому</div></div><span class="score cold">25</span></div>
+    <button class="tg-btn ghost">Показати всі 10 →</button>
   </div>
-  <div class="card"><h2>🤖 AI-інсайт</h2>
-    <p style="font-size:14px;color:#334155">Угод в роботі: 14, сума пайплайна: 212 000 грн. Найчастіша причина втрат — «ціна». Рекомендація: спочатку дзвонити гарячим (negotiation + свіжа активність).</p>
+
+  <div class="section-title">Дохід + прогноз</div>
+  <div class="card"><canvas id="forecast" height="170"></canvas></div>
+
+  <div class="section-title">Наступні дії</div>
+  <div class="card">
+    <div class="stat-row">📞 Угода зависла 4 дн. (contacted)<span class="val" style="color:var(--tg-danger)">терміново</span></div>
+    <div class="stat-row">📝 Переговори без задачі<span class="val">follow-up</span></div>
+    <button class="tg-btn">Створити задачу</button>
   </div>
 </main>
-<footer>AI Leleka CRM · preview збігається з GET /analytics/dashboard · графіки: Chart.js (у проді — Recharts)</footer>
+
+<nav class="tabbar">
+  <div class="tab"> <span class="ico">💬</span>Чати </div>
+  <div class="tab active"> <span class="ico">📊</span>Дашборд </div>
+  <div class="tab"> <span class="ico">🤝</span>Угоди </div>
+  <div class="tab"> <span class="ico">👥</span>Клієнти </div>
+  <div class="tab"> <span class="ico">⚙️</span>Ще </div>
+</nav>
+
+<footer>AI Leleka CRM · Telegram WebApp style · дані: GET /analytics/dashboard</footer>
+
 <script>
-new Chart(document.getElementById('funnel'), { type: 'bar',
-  data: { labels: ['new', 'contacted', 'negotiation', 'won', 'lost'],
-    datasets: [{ data: [12, 8, 6, 5, 3], backgroundColor: ['#94a3b8','#60a5fa','#fbbf24','#16a34a','#ef4444'] }] },
-  options: { plugins: { legend: { display: false } } } });
-new Chart(document.getElementById('forecast'), { type: 'line',
-  data: { labels: ['Чер', 'Лип', 'Сер', 'Вер', 'Прогноз'],
-    datasets: [{ data: [64000, 72000, 81000, 78000, 86000], borderColor: '#16a34a', tension: .3, fill: false }] },
-  options: { plugins: { legend: { display: false } } } });
+  // Інтеграція з Telegram WebApp: підхоплюємо тему клієнта
+  (function () {
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (!tg) return;
+    tg.ready(); tg.expand();
+    document.getElementById('online').textContent = 'online · WebApp';
+    const p = tg.themeParams || {};
+    const root = document.documentElement.style;
+    if (p.bg_color) root.setProperty('--tg-bg', p.bg_color);
+    if (p.secondary_bg_color) root.setProperty('--tg-card', p.secondary_bg_color);
+    if (p.text_color) root.setProperty('--tg-text', p.text_color);
+    if (p.hint_color) root.setProperty('--tg-hint', p.hint_color);
+    if (p.link_color) root.setProperty('--tg-link', p.link_color);
+    if (p.button_color) root.setProperty('--tg-btn', p.button_color);
+    if (p.button_text_color) root.setProperty('--tg-btn-text', p.button_text_color);
+  })();
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const tick = dark ? '#7f91a4' : '#707579';
+  Chart.defaults.color = tick; Chart.defaults.font.family = "-apple-system, Roboto, sans-serif";
+  new Chart(document.getElementById('funnel'), { type: 'bar',
+    data: { labels: ['new', 'contacted', 'negotiation', 'won', 'lost'],
+      datasets: [{ data: [12, 8, 6, 5, 3],
+        backgroundColor: ['#7f91a4','#37aee2','#f2994a','#31b545','#e53935'], borderRadius: 6 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: dark ? '#0e1621' : '#eef1f4' } } } } });
+  new Chart(document.getElementById('forecast'), { type: 'line',
+    data: { labels: ['Чер', 'Лип', 'Сер', 'Вер', 'Прогноз'],
+      datasets: [{ data: [64000, 72000, 81000, 78000, 86000],
+        borderColor: '#31b545', backgroundColor: '#31b54522', tension: .35, fill: true, pointRadius: 4 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: dark ? '#0e1621' : '#eef1f4' } }, x: { grid: { display: false } } } } });
 </script>
 </body>
 </html>
