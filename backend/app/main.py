@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import analytics, auth, automations, clients, deals, tasks, webhooks
+from app.api import analytics, auth, automations, billing, clients, deals, integrations, tasks, webhooks
 from app.db.session import Base, engine
 
 # Импорт моделей чтобы create_all увидел таблицы
@@ -15,6 +15,8 @@ app.include_router(tasks.router)
 app.include_router(webhooks.router)
 app.include_router(automations.router)
 app.include_router(analytics.router)
+app.include_router(billing.router)
+app.include_router(integrations.router)
 
 
 @app.on_event("startup")
