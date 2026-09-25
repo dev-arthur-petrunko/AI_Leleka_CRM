@@ -1,0 +1,31 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: leleka
+      POSTGRES_PASSWORD: leleka
+      POSTGRES_DB: leleka_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  api:
+    build: ./backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/code
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://leleka:leleka@db:5432/leleka_crm
+      SECRET_KEY: change-me-in-production-min-32-chars
+    depends_on:
+      - db
+      - redis
+volumes:
+  pgdata:
