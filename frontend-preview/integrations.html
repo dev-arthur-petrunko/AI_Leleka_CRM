@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Інтеграції</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; }
+  header h1 { font-size:20px; } header h1 span { color:var(--tg-link); }
+  main { padding:24px; max-width:800px; margin:0 auto; }
+  .card{background:var(--tg-card);border-radius:12px;padding:6px 18px;box-shadow:0 1px 3px rgba(0,0,0,.15);margin-bottom:14px}
+  .card h2{font-size:14px;color:var(--tg-hint);text-transform:uppercase;padding:12px 0 4px}
+  .row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--tg-sep);font-size:15px}
+  .row:last-child{border:none}
+  .logo{width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
+  .meta{font-size:12px;color:var(--tg-hint)}
+  .st{margin-left:auto;font-size:11px;font-weight:700;border-radius:20px;padding:3px 10px;white-space:nowrap}
+  .st.off{background:var(--tg-sep);color:var(--tg-hint)} .st.on{background:#31b545;color:#fff}
+  .mini{border:1px solid var(--tg-btn);color:var(--tg-link);background:transparent;border-radius:8px;
+    font-size:12.5px;font-weight:600;padding:6px 12px;cursor:pointer;white-space:nowrap}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
+  .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
+  .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>🪶 AI Leleka CRM <span>інтеграції</span></h1></header>
+<main>
+  <div class="card"><h2>Доставка і каса</h2>
+    <div class="row"><div class="logo" style="background:#e53935">📦</div><div>Нова Пошта<div class="meta">авто-ТТН при оплаті</div></div><span class="st off">stub</span><button class="mini" onclick="t('novaposhta')">Тест</button></div>
+    <div class="row"><div class="logo" style="background:#17212b">🧾</div><div>Checkbox РРО<div class="meta">фіскальний чек</div></div><span class="st off">stub</span><button class="mini" onclick="t('checkbox')">Тест</button></div>
+  </div>
+  <div class="card"><h2>Оплата</h2>
+    <div class="row"><div class="logo" style="background:#31b545">💳</div><div>LiqPay<div class="meta">інвойс-ссилка</div></div><span class="st off">stub</span><button class="mini" onclick="t('liqpay')">Тест</button></div>
+    <div class="row"><div class="logo" style="background:#000">🐱</div><div>Monobank<div class="meta">acquiring invoice</div></div><span class="st off">stub</span><button class="mini" onclick="t('monobank')">Тест</button></div>
+  </div>
+  <div class="card"><h2>Маркетплейси</h2>
+    <div class="row"><div class="logo" style="background:#f2994a">🛒</div><div>Prom<div class="meta">останній імпорт: —</div></div><span class="st off">stub</span><button class="mini" onclick="t('prom')">Імпорт</button></div>
+    <div class="row"><div class="logo" style="background:#37aee2">🛍</div><div>Rozetka<div class="meta">останній імпорт: —</div></div><span class="st off">stub</span><button class="mini" onclick="t('rozetka')">Імпорт</button></div>
+  </div>
+  <p style="color:var(--tg-hint);font-size:12px">У проді: POST /integrations (ключ) → POST /{provider}/test → /import-orders. Ключі зберігаються шифрованими (Fernet), у списку їх не видно.</p>
+</main>
+<nav class="tabbar">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab" href="billing.html"><span class="ico">💳</span>Тариф</a>
+  <a class="tab active" href="integrations.html"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  function t(p){alert('['+p+'] stub: додайте ключ через POST /integrations — у проді тут реальний ping адаптера з ретраями.');}
+</script>
+</body>
+</html>

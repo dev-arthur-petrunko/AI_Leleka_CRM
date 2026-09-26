@@ -26,6 +26,7 @@
   .card { background:var(--tg-card); border-radius:12px; padding:6px 18px; box-shadow:0 1px 3px rgba(0,0,0,.15); }
   .row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--tg-sep); font-size:15px; }
   .row:last-child { border-bottom:none; } .row.hidden { display:none; }
+  .row[data-href] { cursor:pointer; }
   .ava { width:42px; height:42px; border-radius:50%; flex-shrink:0; display:flex; align-items:center;
     justify-content:center; color:#fff; font-weight:700; font-size:18px; }
   .meta { font-size:12.5px; color:var(--tg-hint); }
@@ -49,7 +50,7 @@
     <span class="chip" data-s="lost">lost</span>
   </div>
   <div class="card" id="list">
-    <div class="row" data-seg="vip"><div class="ava" style="background:#f2994a">О</div><div>Олена<div class="meta">+380970000001 · form · Менеджер 1</div></div><span class="seg vip">vip</span></div>
+    <div class="row" data-seg="vip" data-href="client.html"><div class="ava" style="background:#f2994a">О</div><div>Олена<div class="meta">+380970000001 · form · Менеджер 1</div></div><span class="seg vip">vip</span></div>
     <div class="row" data-seg="regular"><div class="ava" style="background:#3390ec">Т</div><div>Тарас<div class="meta">+380970000002 · prom · Менеджер 2</div></div><span class="seg regular">regular</span></div>
     <div class="row" data-seg="new"><div class="ava" style="background:#7f91a4">І</div><div>Ірина<div class="meta">+380970000003 · manual · —</div></div><span class="seg new">new</span></div>
     <div class="row" data-seg="regular"><div class="ava" style="background:#31b545">Б</div><div>Богдан<div class="meta">+380970000004 · rozetka · Менеджер 1</div></div><span class="seg regular">regular</span></div>
@@ -63,8 +64,8 @@
   <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
   <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
   <a class="tab active" href="clients.html"><span class="ico">👥</span>Клієнти</a>
-  <a class="tab" href="#" onclick="alert('У проді: /billing');return false"><span class="ico">💳</span>Тариф</a>
-  <a class="tab" href="#" onclick="alert('У проді: /settings');return false"><span class="ico">⚙️</span>Ще</a>
+  <a class="tab" href="billing.html"><span class="ico">💳</span>Тариф</a>
+  <a class="tab" href="integrations.html"><span class="ico">⚙️</span>Ще</a>
 </nav>
 <script>
   (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();
@@ -78,6 +79,7 @@
     document.querySelectorAll('#list .row').forEach(r=>{
       const okS=(seg==='all'||r.dataset.seg===seg), okQ=!q||r.textContent.toLowerCase().includes(q);
       r.classList.toggle('hidden',!(okS&&okQ));});}
+  document.querySelectorAll('#list .row[data-href]').forEach(r=>r.onclick=()=>location=r.dataset.href);
 </script>
 </body>
 </html>

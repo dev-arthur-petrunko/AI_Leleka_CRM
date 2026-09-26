@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Тариф</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; }
+  header h1 { font-size:20px; } header h1 span { color:var(--tg-link); }
+  main { padding:24px; max-width:1000px; margin:0 auto; }
+  .cur{background:var(--tg-card);border-radius:12px;padding:18px;margin-bottom:16px}
+  .bar{height:8px;border-radius:4px;background:var(--tg-sep);margin-top:8px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--tg-btn);border-radius:4px}
+  .plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:700px){.plans{grid-template-columns:1fr}}
+  .plan{background:var(--tg-card);border-radius:12px;padding:18px;text-align:center}
+  .plan.hot{outline:2px solid var(--tg-btn)}
+  .plan .p{font-size:15px;font-weight:700} .plan .price{font-size:28px;font-weight:800;margin:8px 0}
+  .plan ul{list-style:none;font-size:13.5px;color:var(--tg-hint);margin:10px 0 14px;line-height:1.9}
+  .tg-btn{border:none;border-radius:10px;background:var(--tg-btn);color:var(--tg-btn-text);
+    font-size:14px;font-weight:600;padding:10px 18px;cursor:pointer;width:100%}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
+  .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
+  .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>🪶 AI Leleka CRM <span>тариф</span></h1></header>
+<main>
+  <div class="cur"><b id="curName">Pro</b> · <span style="color:var(--tg-hint);font-size:13px">місць зайнято: 3/5</span>
+    <div class="bar"><i style="width:60%"></i></div>
+    <p style="font-size:12.5px;color:var(--tg-hint);margin-top:8px">У проді: GET /billing/current · апгрейд через LiqPay/Mono.</p></div>
+  <div class="plans">
+    <div class="plan"><div class="p">Free</div><div class="price">0 ₴</div>
+      <ul><li>1 користувач</li><li>Картки + воронка</li><li>Без AI і маркетплейсів</li></ul>
+      <button class="tg-btn" onclick="setPlan('Free')">Обрати</button></div>
+    <div class="plan hot"><div class="p">Pro · 350 ₴/міс</div><div class="price">350 ₴</div>
+      <ul><li>до 5 місць</li><li>AI-аналітика + дашборд</li><li>Prom/Rozetka + Нова Пошта</li></ul>
+      <button class="tg-btn" onclick="setPlan('Pro')">Обрати</button></div>
+    <div class="plan"><div class="p">Team · 300 ₴/міс</div><div class="price">300 ₴</div>
+      <ul><li>5+ місць</li><li>+ Checkbox РРО/ПРРО</li><li>Пріоритетна підтримка</li></ul>
+      <button class="tg-btn" onclick="setPlan('Team')">Обрати</button></div>
+  </div>
+</main>
+<nav class="tabbar">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab active" href="billing.html"><span class="ico">💳</span>Тариф</a>
+  <a class="tab" href="integrations.html"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  function setPlan(p){document.getElementById('curName').textContent=p;
+    document.querySelectorAll('.plan').forEach(x=>x.classList.remove('hot'));
+    event.target.closest('.plan').classList.add('hot');
+    alert('У проді: POST /billing/upgrade → '+p);}
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Задачі</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; display:flex;
+    justify-content:space-between; align-items:center; }
+  header h1 { font-size:20px; } header h1 span { color:var(--tg-link); }
+  main { padding:24px; max-width:800px; margin:0 auto; }
+  .chips{display:flex;gap:8px;margin-bottom:12px}
+  .chip{border:1px solid var(--tg-sep);background:var(--tg-card);color:var(--tg-hint);
+    border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer}
+  .chip.active{background:var(--tg-btn);color:var(--tg-btn-text);border-color:var(--tg-btn)}
+  .card{background:var(--tg-card);border-radius:12px;padding:6px 18px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+  .task{display:flex;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--tg-sep);font-size:15px}
+  .task:last-child{border:none} .task.hidden{display:none}
+  .task.done .tt{text-decoration:line-through;color:var(--tg-hint)}
+  .task input{width:20px;height:20px;accent-color:var(--tg-btn)}
+  .task .meta{font-size:12px;color:var(--tg-hint)}
+  .prio{width:8px;align-self:stretch;border-radius:4px;flex-shrink:0}
+  .prio.high{background:#e53935} .prio.normal{background:#3390ec} .prio.low{background:#7f91a4}
+  .due{margin-left:auto;font-size:12px;color:var(--tg-hint);white-space:nowrap}
+  .due.over{color:#e53935;font-weight:700}
+  .tg-btn{border:none;border-radius:10px;background:var(--tg-btn);color:var(--tg-btn-text);
+    font-size:14px;font-weight:600;padding:10px 18px;margin-bottom:16px;cursor:pointer}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
+  .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
+  .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>🪶 AI Leleka CRM <span>задачі</span></h1><button class="tg-btn" style="margin:0" onclick="addTask()">+ Задача</button></header>
+<main>
+  <div class="chips"><span class="chip active" data-f="open">відкриті</span>
+    <span class="chip" data-f="done">виконані</span><span class="chip" data-f="all">всі</span></div>
+  <div class="card" id="list">
+    <div class="task" data-s="open"><span class="prio high"></span><input type="checkbox" onchange="done(this)">
+      <div><div class="tt">Угода зависла! Зателефонувати (авто)</div><div class="meta">Замовлення #395 · Богдан</div></div><span class="due over">прострочено</span></div>
+    <div class="task" data-s="open"><span class="prio high"></span><input type="checkbox" onchange="done(this)">
+      <div><div class="tt">Передзвонити по #412</div><div class="meta">Олена · hot 88</div></div><span class="due">сьогодні</span></div>
+    <div class="task" data-s="open"><span class="prio normal"></span><input type="checkbox" onchange="done(this)">
+      <div><div class="tt">Надіслати рахунок</div><div class="meta">Олена · до пт</div></div><span class="due">пт</span></div>
+    <div class="task done" data-s="done"><span class="prio low"></span><input type="checkbox" checked onchange="done(this)">
+      <div><div class="tt">Запит на відгук #380</div><div class="meta">Софія · авто</div></div><span class="due">✓</span></div>
+  </div>
+  <p style="color:var(--tg-hint);font-size:12px;margin-top:12px">«Електронний будильник менеджера» · у проді GET /tasks + нагадування. Авто-задачі створює движок автоматизацій.</p>
+</main>
+<nav class="tabbar">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab" href="billing.html"><span class="ico">💳</span>Тариф</a>
+  <a class="tab" href="integrations.html"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  let f='open';
+  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');f=c.dataset.f;apply();});
+  function apply(){document.querySelectorAll('#list .task').forEach(t=>{
+    t.classList.toggle('hidden',!(f==='all'||t.dataset.s===f));});}
+  function done(cb){const t=cb.closest('.task');t.classList.toggle('done',cb.checked);
+    t.dataset.s=cb.checked?'done':'open';t.querySelector('.due').textContent=cb.checked?'✓':'сьогодні';apply();}
+  function addTask(){const v=prompt("Нова задача:");if(!v)return;
+    const d=document.createElement('div');d.className='task';d.dataset.s='open';
+    d.innerHTML='<span class="prio normal"></span><input type="checkbox" onchange="done(this)"><div><div class="tt"></div><div class="meta">вручну · сьогодні</div></div><span class="due">сьогодні</span>';
+    d.querySelector('.tt').textContent=v;document.getElementById('list').prepend(d);apply();}
+  apply();
+</script>
+</body>
+</html>

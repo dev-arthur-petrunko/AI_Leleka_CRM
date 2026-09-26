@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Картка клієнта</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; display:flex; align-items:center; gap:12px; }
+  header a { color:#fff; text-decoration:none; font-size:20px; }
+  main { padding:24px; max-width:900px; margin:0 auto; }
+  .profile { background:var(--tg-card); border-radius:12px; padding:20px; display:flex; gap:16px; align-items:center; margin-bottom:16px; }
+  .ava { width:64px; height:64px; border-radius:50%; background:#f2994a; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-weight:800; font-size:28px; flex-shrink:0; }
+  .seg { font-size:11px; font-weight:700; border-radius:20px; padding:3px 10px; color:#fff; background:#f2994a; }
+  .sub { font-size:13px; color:var(--tg-hint); margin-top:4px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:700px){.grid{grid-template-columns:1fr}}
+  .card { background:var(--tg-card); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .card h2 { font-size:15px; margin-bottom:10px; }
+  .kv { display:flex; padding:7px 0; border-bottom:1px solid var(--tg-sep); font-size:14px; }
+  .kv:last-child{border:none} .kv b{margin-left:auto} .kv span{color:var(--tg-hint)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:8px;border-bottom:1px solid var(--tg-sep)} th{font-size:11px;text-transform:uppercase;color:var(--tg-hint);text-align:left;padding:6px 8px}
+  .task{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--tg-sep);font-size:14px}
+  .task:last-child{border:none} .task.done span{text-decoration:line-through;color:var(--tg-hint)}
+  .tl{border-left:3px solid var(--tg-link);margin-left:6px;padding-left:14px;font-size:13.5px}
+  .tl div{margin-bottom:10px} .tl small{color:var(--tg-hint)}
+  .btns{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+  .tg-btn{border:none;border-radius:10px;background:var(--tg-btn);color:var(--tg-btn-text);
+    font-size:14px;font-weight:600;padding:11px 18px;cursor:pointer}
+  .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
+  .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
+  .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
+</style>
+</head>
+<body>
+<header><a href="clients.html">←</a><div>Картка клієнта</div></header>
+<main>
+  <div class="profile"><div class="ava">О</div>
+    <div><div style="font-size:19px;font-weight:700">Олена <span class="seg">vip</span></div>
+    <div class="sub">+380970000001 · form · Менеджер 1 · згода GDPR ✓</div></div>
+  </div>
+  <div class="btns"><button class="tg-btn" onclick="alert('У проді: дзвінок / SMS')">📞 Зателефонувати</button>
+    <button class="tg-btn" onclick="alert('У проді: POST /deals')">+ Угода</button>
+    <button class="tg-btn" onclick="alert('У проді: POST /tasks')">+ Задача</button></div>
+  <div class="grid">
+    <div class="card"><h2>Досьє</h2>
+      <div class="kv"><span>Телефон</span><b>+380970000001</b></div>
+      <div class="kv"><span>Джерело</span><b>form</b></div>
+      <div class="kv"><span>Угод всього</span><b>3 · 77 000 ₴</b></div>
+      <div class="kv"><span>AI-скор (краща угода)</span><b style="color:#e53935">88 hot</b></div>
+      <div class="kv"><span>Нотатки</span><b>Любить НП, післяплата</b></div>
+    </div>
+    <div class="card"><h2>Історія угод</h2>
+      <table><tr><th>Угода</th><th>Сума</th><th>Стадія</th></tr>
+      <tr><td>#412</td><td>45 000 ₴</td><td>negotiation</td></tr>
+      <tr><td>#380</td><td>32 000 ₴</td><td>won ✓</td></tr>
+      <tr><td>#352</td><td>12 000 ₴</td><td>lost · ціна</td></tr></table>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="card"><h2>Задачі</h2>
+      <div class="task"><input type="checkbox" checked onclick="this.parentNode.classList.toggle('done')"> <span>Надіслати рахунок (до пт)</span></div>
+      <div class="task"><input type="checkbox" onclick="this.parentNode.classList.toggle('done')"> <span>Передзвонити по #412</span></div>
+      <div class="task"><input type="checkbox" onclick="this.parentNode.classList.toggle('done')"> <span>Запит на відгук</span></div>
+    </div>
+    <div class="card"><h2>Журнал (audit_log)</h2>
+      <div class="tl">
+        <div>Створено картку <small>· owner · 12.09</small></div>
+        <div>Угоду #412 переведено в negotiation <small>· Менеджер 1 · вчора</small></div>
+        <div>AI підняв скор до 88 <small>· система · сьогодні</small></div>
+      </div>
+    </div>
+  </div>
+</main>
+<nav class="tabbar">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
+  <a class="tab active" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab" href="billing.html"><span class="ico">💳</span>Тариф</a>
+  <a class="tab" href="integrations.html"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>(function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();</script>
+</body>
+</html>
