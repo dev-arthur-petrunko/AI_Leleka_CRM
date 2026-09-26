@@ -73,12 +73,20 @@ def create_client(data: ClientIn, request: Request,
     return c
 
 
+MAX_CSV_BYTES = 5 * 1024 * 1024  # 5 МБ вистачає з запасом на кілька тисяч рядків
+
+
 @router.post("/import-csv")
 def import_csv(file: UploadFile = File(...),
                user: User = Depends(_writer),
                db: Session = Depends(get_db)):
     """Імпорт клієнтів з CSV/Excel-експорту. Колонки: name,phone,email,segment."""
-    raw = file.file.read().decode("utf-8-sig")
+    if file.size is not None and file.size > MAX_CSV_BYTES:
+        raise HTTPException(413, f"Файл завеликий (>{MAX_CSV_BYTES // 1024 // 1024} МБ)")
+    raw = file.file.read(MAX_CSV_BYTES + 1)
+    if len(raw) > MAX_CSV_BYTES:
+        raise HTTPException(413, f"Файл завеликий (>{MAX_CSV_BYTES // 1024 // 1024} МБ)")
+    raw = raw.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(raw))
     created = 0
     for row in reader:

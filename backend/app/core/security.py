@@ -1,20 +1,26 @@
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from cryptography.fernet import Fernet, InvalidToken
 from jose import jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# passlib[bcrypt]==1.7.4 несумісний з bcrypt>=4.1 (прибрали __about__) —
+# на чистому `pip install` це ламає hash_password на БУДЬ-ЯКОМУ паролі
+# з незрозумілою помилкою "password cannot be longer than 72 bytes".
+# Використовуємо bcrypt напряму, без passlib-прошарку.
+_BCRYPT_MAX_BYTES = 72  # обмеження самого алгоритму bcrypt
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    raw = password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
+    return bcrypt.hashpw(raw, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    raw = plain.encode("utf-8")[:_BCRYPT_MAX_BYTES]
+    return bcrypt.checkpw(raw, hashed.encode("utf-8"))
 
 
 def create_access_token(sub: str, tenant_id: str, role: str) -> str:

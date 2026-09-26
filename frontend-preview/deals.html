@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>AI Leleka CRM — Угоди</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
   :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
     --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
@@ -27,6 +29,7 @@
     transition:transform .2s ease, box-shadow .2s ease; }
   .deal:active { cursor:grabbing; }
   .deal.dragging { transform:rotate(2deg) scale(1.04); box-shadow:0 10px 22px rgba(0,0,0,.28); opacity:.95; }
+  .deal-ghost { opacity:.4; background:var(--tg-link); }
   .empty-hint { font-size:12.5px; color:var(--tg-hint); text-align:center; padding:14px 6px;
     border:1.5px dashed var(--tg-sep); border-radius:10px; }
   .col.flash { outline:2px solid var(--tg-link); }
@@ -96,8 +99,22 @@
     c.querySelector('[data-sum]').textContent=n+' угод · '+s.toLocaleString('uk-UA')+' ₴';
     if(!n){const h=document.createElement('div');h.className='empty-hint';h.textContent='порожньо — перетягніть сюди угоду';c.appendChild(h);}});}
   let drag=null;
-  document.querySelectorAll('.deal').forEach(d=>{d.addEventListener('dragstart',()=>{drag=d;d.classList.add('dragging');});
+  document.querySelectorAll('.deal').forEach(d=>{d.removeAttribute('draggable');
+    d.addEventListener('dragstart',()=>{drag=d;d.classList.add('dragging');});
     d.addEventListener('dragend',()=>d.classList.remove('dragging'));});
+  // SortableJS: плавний підхват + анімація «провала» на нове місце (замість дубового HTML5 DnD)
+  if (window.Sortable) document.querySelectorAll('.col').forEach(col => {
+    new Sortable(col, { group: 'deals', animation: 200, ghostClass: 'deal-ghost',
+      draggable: '.deal', filter: '.empty-hint',
+      onEnd: (evt) => {
+        recount();
+        const stage = evt.to.dataset.stage, id = evt.item.dataset.id;
+        if (stage === 'won' && window.confetti)
+          confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+        toast(stage === 'won' ? '🎉 Угоду виграно! (прод: PATCH /deals/' + id + '/stage)'
+                              : 'Угоду #' + id + ' → ' + stage + ' (прод: PATCH /deals/{id}/stage)');
+      }});
+  });
   // Підсвітка стадії з дашборда (?stage=negotiation) + toast-підтвердження дропу
   (function(){const st=new URLSearchParams(location.search).get('stage');
     if(!st)return;const col=document.querySelector('.col[data-stage="'+st+'"]');

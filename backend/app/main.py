@@ -1,9 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 from starlette.responses import JSONResponse
 
 from app.api import (
@@ -20,12 +18,6 @@ from app.api import (
 )
 from app.core.config import frontend_origins
 from app.core.rate import limiter
-from app.db.session import Base, engine
-
-# Імпорт моделей щоб create_all побачив таблиці
-import app.models  # noqa: F401
-
-limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(title="AI Leleka CRM", version="0.1.0-mvp")
 app.state.limiter = limiter
@@ -56,7 +48,19 @@ app.include_router(notifications.router)
 
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)  # MVP; далі — Alembic (backend/alembic/)
+    """Схему більше не створює create_all() — нею володіє Alembic.
+
+    Перед стартом контейнера виконати: alembic upgrade head
+    (docker-compose command вже робить це, див. docker-compose.yml).
+    Тут лише перевіряємо, що з'єднання з БД справді живе, щоб
+    контейнер одразу впав з зрозумілою помилкою, а не на першому запиті.
+    """
+    from sqlalchemy import text
+
+    from app.db.session import engine
+
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
 
 
 @app.get("/health")

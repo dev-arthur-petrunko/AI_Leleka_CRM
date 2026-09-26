@@ -280,6 +280,7 @@ CREATE TABLE billing_orders (
   provider      TEXT NOT NULL CHECK (provider IN ('liqpay','monobank')),
   order_id      TEXT NOT NULL UNIQUE,
   amount_uah    NUMERIC(12,2) NOT NULL,
+  seats_billed  INTEGER NOT NULL DEFAULT 1,  -- amount_uah = ціна_за_місце × seats_billed
   status        TEXT NOT NULL DEFAULT 'pending'
                 CHECK (status IN ('pending','paid','failed')),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),

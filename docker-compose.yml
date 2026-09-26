@@ -16,7 +16,8 @@ services:
       - "6379:6379"
   api:
     build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Спочатку миграції (Alembic — джерело правди для схеми), тільки потім API.
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend:/code
     ports:

@@ -267,6 +267,7 @@ class BillingOrder(Base):
     provider: Mapped[str] = mapped_column(String(20), nullable=False)  # liqpay/monobank
     order_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     amount_uah: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    seats_billed: Mapped[int] = mapped_column(default=1)  # amount_uah = price_per_seat * seats_billed
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/paid/failed
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -12,6 +12,7 @@
 
 import base64
 import hashlib
+import hmac
 import json
 import time
 from uuid import UUID
@@ -51,7 +52,9 @@ def current(tenant_id: UUID = Depends(get_current_tenant),
     plan = current_plan(tenant)
     return {"plan": tenant.plan, "label": plan["label"],
             "seats_used": seats_used, "seats_limit": plan["seats"],
-            "features": plan["features"]}
+            "features": plan["features"],
+            "price_per_seat_uah": plan["price_uah"],
+            "monthly_total_uah": plan["price_uah"] * max(seats_used, 1)}
 
 
 @router.get("/orders")
@@ -67,12 +70,16 @@ def upgrade(data: UpgradeIn, user: User = Depends(_owner),
     """ТІЛЬКИ owner. Платний план — лише через рахунок + paid-вебхук."""
     if data.new_plan not in PLANS:
         raise HTTPException(400, f"Unknown plan. Available: {list(PLANS)}")
-    price = PLANS[data.new_plan]["price_uah"]
     tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
     if tenant.plan == data.new_plan:
         return {"ok": True, "plan": tenant.plan, "message": "Тариф уже активний"}
+    # Тарифи заявлені "за місце" (350/300 грн) — рахунок мусить множитись
+    # на реальну кількість активних співробітників, а не бути фіксованим.
+    seats_billed = max(1, db.query(User).filter(
+        User.tenant_id == user.tenant_id, User.is_active.is_(True)).count())
+    price = PLANS[data.new_plan]["price_uah"] * seats_billed
     if price == 0:
-        _apply_plan(db, user, tenant, data.new_plan, order_id=None)
+        _apply_plan(db, user, tenant, data.new_plan, order_id=None, seats_billed=seats_billed)
         return {"ok": True, "plan": data.new_plan, "payment_required": False}
     if data.provider not in ("liqpay", "monobank"):
         raise HTTPException(400, "provider must be liqpay or monobank")
@@ -95,10 +102,10 @@ def upgrade(data: UpgradeIn, user: User = Depends(_owner),
         pay = resp["data"]
     db.add(BillingOrder(tenant_id=user.tenant_id, plan=data.new_plan,
                         provider=data.provider, order_id=order_id,
-                        amount_uah=price, status="pending"))
+                        amount_uah=price, seats_billed=seats_billed, status="pending"))
     db.commit()
     return {"ok": True, "payment_required": True, "order_id": order_id,
-            "amount_uah": price, "pay": pay}
+            "amount_uah": price, "seats_billed": seats_billed, "pay": pay}
 
 
 @router.post("/webhook/liqpay")
@@ -110,7 +117,7 @@ def webhook_liqpay(data: str = Form(...), signature: str = Form(...),
     expect = base64.b64encode(hashlib.sha1(
         (settings.PLATFORM_LIQPAY_PRIVATE_KEY + data
          + settings.PLATFORM_LIQPAY_PRIVATE_KEY).encode()).digest()).decode()
-    if expect != signature:
+    if not hmac.compare_digest(expect, signature):
         raise HTTPException(403, "Bad signature")
     payload = json.loads(base64.b64decode(data).decode())
     if payload.get("status") != "success":
@@ -151,18 +158,19 @@ def _confirm_paid(db: Session, order_id: str) -> dict:
     tenant = db.query(Tenant).filter(Tenant.id == order.tenant_id).first()
     order.status = "paid"
     order.paid_at = datetime.now(timezone.utc)
-    _apply_plan(db, None, tenant, order.plan, order_id=order_id)
+    _apply_plan(db, None, tenant, order.plan, order_id=order_id, seats_billed=order.seats_billed)
     return {"ok": True, "plan": order.plan}
 
 
 def _apply_plan(db: Session, user: User | None, tenant: Tenant,
-                new_plan: str, order_id: str | None):
+                new_plan: str, order_id: str | None, seats_billed: int = 1):
     old = tenant.plan
     tenant.plan = new_plan
     db.add(AuditLog(tenant_id=tenant.id, actor_id=user.id if user else None,
                     entity_type="tenant", entity_id=str(tenant.id),
                     action="update", old_values={"plan": old},
-                    new_values={"plan": new_plan, "order_id": order_id}))
+                    new_values={"plan": new_plan, "order_id": order_id,
+                                "seats_billed": seats_billed}))
     db.commit()
 
 
