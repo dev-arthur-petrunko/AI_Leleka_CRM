@@ -9,3 +9,5 @@ venv/
 .DS_Store
 Thumbs.db
 pgdata/
+# Локальна DOCX-специфікація — НЕ пушити
+*.docx
