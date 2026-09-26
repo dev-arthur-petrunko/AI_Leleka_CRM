@@ -55,7 +55,7 @@
 </style>
 </head>
 <body>
-<header><div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>🪶 AI Leleka CRM <span>угоди</span></h1></div><div><button class="tg-btn" style="margin:0 8px 0 0" onclick="location='tasks.html'">+ Задача</button><button class="tg-btn" style="margin:0" onclick="toast('У проді: POST /deals')">+ Угода</button></div></header>
+<header><div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>🪶 AI Leleka CRM <span>угоди</span></h1></div><div><button class="tg-btn" style="margin:0 8px 0 0" onclick="location='tasks.html'">+ Задача</button><button class="tg-btn" style="margin:0" onclick="addDeal()">+ Угода</button></div></header>
 <main>
   <div class="board" id="board">
     <div class="col" data-stage="new"><h3>🆕 New<span class="sum" data-sum></span></h3>
@@ -107,7 +107,25 @@
       new Sortable(col, { group: 'deals', animation: 200, ghostClass: 'deal-ghost',
         draggable: '.deal', filter: '.empty-hint',
         onEnd: (evt) => {
-          recount();
+  recount();
+  function addDeal(){
+    const title = prompt('Назва угоди:', 'Замовлення #');
+    if (!title) return;
+    const amount = prompt('Сума, грн:', '5000') || '0';
+    const col = document.querySelector('.col[data-stage="new"]');
+    col.querySelectorAll('.empty-hint').forEach(h=>h.remove());
+    const d = document.createElement('div');
+    d.className = 'deal'; d.dataset.id = 'new-' + Date.now();
+    const amt = document.createElement('div'); amt.className = 'amt';
+    amt.textContent = Number(amount.replace(/\D/g,'' )||0).toLocaleString('uk-UA') + ' ₴';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = 'вручну · сьогодні';
+    const t = document.createElement('div'); t.className = 't'; t.textContent = title;
+    d.append(t, amt, meta);
+    col.prepend(d);
+    recount();
+    toast('Угоду створено в New (у проді: POST /deals)');
+  }
           const stage = evt.to.dataset.stage, id = evt.item.dataset.id;
           if (stage === 'won' && window.confetti)
             confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
