@@ -55,7 +55,7 @@
 </style>
 </head>
 <body>
-<header><h1>🪶 AI Leleka CRM <span>клієнти</span></h1><div><button class="tg-btn" style="margin:0 8px 0 0" onclick="location='tasks.html'">+ Задача</button><button class="tg-btn" style="margin:0" onclick="toast('У проді: POST /clients → тригер new_lead')">+ Клієнт</button></div></header>
+<header><div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>🪶 AI Leleka CRM <span>клієнти</span></h1></div><div><button class="tg-btn" style="margin:0 8px 0 0" onclick="location='tasks.html'">+ Задача</button><button class="tg-btn" style="margin:0" onclick="toast('У проді: POST /clients → тригер new_lead')">+ Клієнт</button></div></header>
 <main>
   <input class="search" id="q" placeholder="🔍 Пошук за ім'ям або телефоном…" oninput="filter()">
   <div class="chips" id="chips">
