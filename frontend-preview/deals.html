@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Угоди</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-btn-text:#fff;
+    --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; display:flex;
+    justify-content:space-between; align-items:center; }
+  header h1 { font-size:20px; } header h1 span { color:var(--tg-link); }
+  main { padding:24px; max-width:1400px; margin:0 auto; }
+  .board { display:grid; grid-template-columns:repeat(5,minmax(220px,1fr)); gap:12px; overflow-x:auto; }
+  .col { background:color-mix(in srgb, var(--tg-card) 92%, transparent); border-radius:12px; padding:10px; min-height:200px; }
+  .col h3 { font-size:13px; text-transform:uppercase; color:var(--tg-hint); padding:4px 6px 10px; }
+  .col h3 .sum { display:block; color:var(--tg-text); font-size:14px; }
+  .col.dragover { outline:2px dashed var(--tg-link); }
+  .deal { background:var(--tg-card); border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    box-shadow:0 1px 3px rgba(0,0,0,.15); cursor:grab; font-size:14px; }
+  .deal:active { cursor:grabbing; }
+  .deal .t { font-weight:600; }
+  .deal .amt { font-weight:800; font-size:16px; margin:4px 0; }
+  .deal .meta { font-size:12px; color:var(--tg-hint); }
+  .pill { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; font-weight:700; color:#fff; }
+  .hot{background:#e53935} .warm{background:#f2994a} .cold{background:#3390ec}
+  .stuck { border-left:4px solid #e53935; }
+  .tg-btn { border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
+    font-size:14px; font-weight:600; padding:10px 18px; margin-bottom:16px; cursor:pointer; }
+  .tabbar { position:fixed; bottom:0; left:0; right:0; background:var(--tg-card);
+    border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
+  .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); cursor:pointer; text-decoration:none; }
+  .tab .ico { font-size:22px; display:block; } .tab.active { color:var(--tg-link); font-weight:600; }
+</style>
+</head>
+<body>
+<header><h1>🪶 AI Leleka CRM <span>угоди</span></h1><button class="tg-btn" style="margin:0" onclick="alert('У проді: POST /deals')">+ Угода</button></header>
+<main>
+  <div class="board" id="board">
+    <div class="col" data-stage="new"><h3>🆕 New<span class="sum" data-sum></span></h3>
+      <div class="deal" draggable="true" data-id="371"><div class="t">Замовлення #371</div><div class="amt">8 000 ₴</div><div class="meta">Марія · <span class="pill cold">25</span> · 5 дн. без руху</div></div>
+      <div class="deal" draggable="true" data-id="398"><div class="t">Замовлення #398</div><div class="amt">4 500 ₴</div><div class="meta">Олег · <span class="pill cold">31</span> · сьогодні</div></div>
+    </div>
+    <div class="col" data-stage="contacted"><h3>📞 Contacted<span class="sum" data-sum></span></h3>
+      <div class="deal" draggable="true" data-id="401"><div class="t">Замовлення #401</div><div class="amt">12 000 ₴</div><div class="meta">Ірина · <span class="pill warm">58</span> · 2 дн.</div></div>
+      <div class="deal stuck" draggable="true" data-id="395"><div class="t">Замовлення #395</div><div class="amt">6 200 ₴</div><div class="meta">Богдан · <span class="pill warm">44</span> · ⏰ 4 дн.!</div></div>
+    </div>
+    <div class="col" data-stage="negotiation"><h3>🤝 Negotiation<span class="sum" data-sum></span></h3>
+      <div class="deal" draggable="true" data-id="412"><div class="t">Замовлення #412</div><div class="amt">45 000 ₴</div><div class="meta">Олена · <span class="pill hot">88</span> · сьогодні</div></div>
+      <div class="deal" draggable="true" data-id="387"><div class="t">Замовлення #387</div><div class="amt">28 000 ₴</div><div class="meta">Тарас · <span class="pill hot">76</span> · вчора</div></div>
+    </div>
+    <div class="col" data-stage="won"><h3>✅ Won<span class="sum" data-sum></span></h3>
+      <div class="deal" draggable="true" data-id="380"><div class="t">Замовлення #380</div><div class="amt">32 000 ₴</div><div class="meta">Софія · vip</div></div>
+      <div class="deal" draggable="true" data-id="375"><div class="t">Замовлення #375</div><div class="amt">18 500 ₴</div><div class="meta">Андрій · regular</div></div>
+    </div>
+    <div class="col" data-stage="lost"><h3>❌ Lost<span class="sum" data-sum></span></h3>
+      <div class="deal" draggable="true" data-id="366"><div class="t">Замовлення #366</div><div class="amt">9 800 ₴</div><div class="meta">Петро · причина: ціна</div></div>
+    </div>
+  </div>
+  <p style="color:var(--tg-hint);font-size:12px;margin-top:12px">Drag &amp; drop між колонками → у проді PATCH /deals/{id}/stage (тригери deal_won/deal_lost спрацюють автоматично).</p>
+</main>
+<nav class="tabbar">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab active" href="deals.html"><span class="ico">🤝</span>Угоди</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab" href="#" onclick="alert('У проді: /billing');return false"><span class="ico">💳</span>Тариф</a>
+  <a class="tab" href="#" onclick="alert('У проді: /settings');return false"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();
+    const p=tg.themeParams||{},r=document.documentElement.style;
+    if(p.bg_color)r.setProperty('--tg-bg',p.bg_color);if(p.secondary_bg_color)r.setProperty('--tg-card',p.secondary_bg_color);
+    if(p.text_color)r.setProperty('--tg-text',p.text_color);if(p.hint_color)r.setProperty('--tg-hint',p.hint_color);
+    if(p.link_color)r.setProperty('--tg-link',p.link_color);if(p.button_color)r.setProperty('--tg-btn',p.button_color);})();
+  function recount(){document.querySelectorAll('.col').forEach(c=>{
+    let n=0,s=0;c.querySelectorAll('.deal .amt').forEach(a=>{n++;s+=parseInt(a.textContent.replace(/\D/g,''))||0});
+    c.querySelector('[data-sum]').textContent=n+' угод · '+s.toLocaleString('uk-UA')+' ₴';});}
+  let drag=null;
+  document.querySelectorAll('.deal').forEach(d=>{d.addEventListener('dragstart',()=>drag=d);});
+  document.querySelectorAll('.col').forEach(c=>{
+    c.addEventListener('dragover',e=>{e.preventDefault();c.classList.add('dragover');});
+    c.addEventListener('dragleave',()=>c.classList.remove('dragover'));
+    c.addEventListener('drop',e=>{e.preventDefault();c.classList.remove('dragover');
+      if(drag){c.appendChild(drag);drag=null;recount();}});});
+  recount();
+</script>
+</body>
+</html>

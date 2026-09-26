@@ -52,7 +52,7 @@
   /* нижній таб-бар як у Telegram */
   .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--tg-card);
     border-top: 1px solid var(--tg-sep); display: flex; padding-bottom: env(safe-area-inset-bottom); }
-  .tab { flex: 1; text-align: center; padding: 8px 0 9px; font-size: 10.5px; color: var(--tg-hint); cursor: pointer; }
+  .tab { flex: 1; text-align: center; padding: 8px 0 9px; font-size: 10.5px; color: var(--tg-hint); cursor: pointer; text-decoration: none; }
   .tab .ico { font-size: 22px; display: block; }
   .tab.active { color: var(--tg-link); font-weight: 600; }
   footer { text-align: center; color: var(--tg-hint); font-size: 12px; padding: 16px; }
@@ -99,11 +99,11 @@
 </main>
 
 <nav class="tabbar">
-  <div class="tab"><span class="ico">💬</span>Чати</div>
-  <div class="tab active"><span class="ico">📊</span>Дашборд</div>
-  <div class="tab"><span class="ico">🤝</span>Угоди</div>
-  <div class="tab"><span class="ico">👥</span>Клієнти</div>
-  <div class="tab"><span class="ico">⚙️</span>Ще</div>
+  <a class="tab active" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab" href="#" onclick="alert('У проді: /billing');return false"><span class="ico">💳</span>Тариф</a>
+  <a class="tab" href="#" onclick="alert('У проді: /settings');return false"><span class="ico">⚙️</span>Ще</a>
 </nav>
 
 <footer>AI Leleka CRM · Telegram style · дані: GET /analytics/dashboard · графіки: Chart.js (у проді — Recharts)</footer>
