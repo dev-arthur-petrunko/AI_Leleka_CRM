@@ -253,3 +253,20 @@ Index("ix_users_tenant", User.tenant_id)
 Index("ix_clients_tenant", Client.tenant_id)
 Index("ix_deals_tenant_stage", Deal.tenant_id, Deal.stage)
 Index("ix_interactions_client", Interaction.client_id, Interaction.created_at.desc())
+
+
+class BillingOrder(Base):
+    """Рахунок за тариф: план змінюється ТІЛЬКИ після paid-вебхука (діра закрита)."""
+
+    __tablename__ = "billing_orders"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    plan: Mapped[str] = mapped_column(String(20), nullable=False)
+    provider: Mapped[str] = mapped_column(String(20), nullable=False)  # liqpay/monobank
+    order_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    amount_uah: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/paid/failed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

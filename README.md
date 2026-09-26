@@ -14,6 +14,7 @@ docker compose up --build
 - Ключі інтеграцій у БД — тільки Fernet-шифровані (`encrypt_credentials` у upsert, GET їх не повертає).
 - RBAC: write — owner/admin/manager; інтеграції — owner/admin; upgrade тарифу — тільки owner (+audit).
 - Платні фічі (`ai_analytics`, `marketplace`, `novaposhta`, `fiscal`) гейтяться на API (402), не лише в UI.
+- Апгрейд тарифу: тільки owner; платний — рахунок (`billing_orders` pending) + інвойс LiqPay/Mono, план змінюється лише paid-вебхуком з перевіркою підпису. Без PLATFORM-ключів — 409.
 - Rate-limit: 10/хв на `/auth/login`. CORS — лише `FRONTEND_ORIGINS`.
 - Міграції: `backend/alembic/` підключено (`alembic revision --autogenerate`, `upgrade head`).
 

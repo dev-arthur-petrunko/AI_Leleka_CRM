@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     # Домени фронту через кому: WebApp, localhost, прод-домен
     FRONTEND_ORIGINS: str = "http://localhost:3000,http://localhost:5173,https://web.telegram.org"
 
+    # Ключі ПЛАТФОРМИ (власника сервісу) для прийому оплати тарифів.
+    # Без них платний апгрейд повертає 409 (діра «безкоштовний Team» закрита).
+    PLATFORM_LIQPAY_PUBLIC_KEY: str = ""
+    PLATFORM_LIQPAY_PRIVATE_KEY: str = ""
+    PLATFORM_MONO_TOKEN: str = ""
+
     class Config:
         env_file = ".env"
 

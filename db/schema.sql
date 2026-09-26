@@ -269,6 +269,25 @@ CREATE INDEX idx_interactions_client ON interactions(client_id, created_at DESC)
 CREATE INDEX idx_interactions_tenant ON interactions(tenant_id, created_at DESC);
 
 -- ============================================================
+-- 12. BILLING_ORDERS — рахунки за тариф (план змінюється лише після paid)
+-- Закриває діру «безкоштовний Team»: POST /billing/upgrade створює pending,
+-- tenant.plan оновлюється тільки paid-вебхуком LiqPay/Mono.
+-- ============================================================
+CREATE TABLE billing_orders (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  plan          TEXT NOT NULL,
+  provider      TEXT NOT NULL CHECK (provider IN ('liqpay','monobank')),
+  order_id      TEXT NOT NULL UNIQUE,
+  amount_uah    NUMERIC(12,2) NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending','paid','failed')),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  paid_at       TIMESTAMPTZ
+);
+CREATE INDEX idx_billing_tenant ON billing_orders(tenant_id, created_at DESC);
+
+-- ============================================================
 -- ЗАМЕЧАНИЕ ДЛЯ FASTAPI:
 -- 1. Во всех SELECT/UPDATE/DELETE обязателен фильтр tenant_id.
 --    Удобно: dependency get_current_tenant() -> tenant_id из JWT.
