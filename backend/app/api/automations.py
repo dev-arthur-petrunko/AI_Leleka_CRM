@@ -5,9 +5,11 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_tenant, get_current_user
+from app.core.deps import get_current_tenant, get_current_user, require_role
 from app.db.session import get_db
 from app.models import AutomationLog, AutomationRule, User
+
+_writer = require_role("owner", "admin", "manager")
 
 router = APIRouter(prefix="/automations", tags=["automations"])
 
@@ -31,7 +33,7 @@ def list_rules(tenant_id: UUID = Depends(get_current_tenant),
 
 
 @router.post("/rules")
-def create_rule(data: RuleIn, user: User = Depends(get_current_user),
+def create_rule(data: RuleIn, user: User = Depends(_writer),
                 db: Session = Depends(get_db)):
     rule = AutomationRule(tenant_id=user.tenant_id, created_by=user.id,
                           **data.model_dump())
@@ -43,7 +45,7 @@ def create_rule(data: RuleIn, user: User = Depends(get_current_user),
 
 
 @router.delete("/rules/{rule_id}")
-def delete_rule(rule_id: UUID, user: User = Depends(get_current_user),
+def delete_rule(rule_id: UUID, user: User = Depends(_writer),
                 db: Session = Depends(get_db)):
     rule = db.query(AutomationRule).filter(
         AutomationRule.id == rule_id, AutomationRule.tenant_id == user.tenant_id
@@ -78,7 +80,7 @@ def stats(tenant_id: UUID = Depends(get_current_tenant),
 
 
 @router.post("/seed-defaults")
-def seed_defaults(user: User = Depends(get_current_user),
+def seed_defaults(user: User = Depends(_writer),
                   db: Session = Depends(get_db)):
     """5 правил из ТЗ одним кликом — для демо и бета-теста."""
     defaults = [

@@ -33,7 +33,17 @@
   .seg { margin-left:auto; font-size:11px; font-weight:700; border-radius:20px; padding:3px 10px; color:#fff; white-space:nowrap; }
   .seg.new{background:#7f91a4} .seg.regular{background:#3390ec} .seg.vip{background:#f2994a} .seg.lost{background:#e53935}
   .tg-btn { border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
-    font-size:14px; font-weight:600; padding:10px 18px; margin-bottom:16px; cursor:pointer; }
+    font-size:14px; font-weight:600; padding:10px 18px; margin-bottom:16px; cursor:pointer;
+    transition:transform .15s ease, opacity .15s ease; }
+  .tg-btn:hover{opacity:.92} .tg-btn:active{transform:scale(.97)}
+  .row{transition:background .15s ease} .row[data-href]:hover{background:color-mix(in srgb, var(--tg-link) 7%, transparent)}
+  .chip{transition:all .15s ease}
+  .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(16px);
+    background:#17212b;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;
+    opacity:0;transition:all .25s ease;z-index:50;pointer-events:none;max-width:90vw}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .empty{text-align:center;color:var(--tg-hint);padding:26px 10px;font-size:15px;line-height:1.8}
+  .empty u{color:var(--tg-link);cursor:pointer}
   .tabbar { position:fixed; bottom:0; left:0; right:0; background:var(--tg-card);
     border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
   .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); cursor:pointer; text-decoration:none; }
@@ -41,7 +51,7 @@
 </style>
 </head>
 <body>
-<header><h1>🪶 AI Leleka CRM <span>клієнти</span></h1><button class="tg-btn" style="margin:0" onclick="alert('У проді: POST /clients → тригер new_lead')">+ Клієнт</button></header>
+<header><h1>🪶 AI Leleka CRM <span>клієнти</span></h1><button class="tg-btn" style="margin:0" onclick="toast('У проді: POST /clients → тригер new_lead')">+ Клієнт</button></header>
 <main>
   <input class="search" id="q" placeholder="🔍 Пошук за ім'ям або телефоном…" oninput="filter()">
   <div class="chips" id="chips">
@@ -57,6 +67,7 @@
     <div class="row" data-seg="vip"><div class="ava" style="background:#e53935">С</div><div>Софія<div class="meta">+380970000005 · form · Менеджер 2</div></div><span class="seg vip">vip</span></div>
     <div class="row" data-seg="new"><div class="ava" style="background:#9c27b0">М</div><div>Марія<div class="meta">+380970000007 · prom · —</div></div><span class="seg new">new</span></div>
     <div class="row" data-seg="lost"><div class="ava" style="background:#616161">П</div><div>Петро<div class="meta">+380970000008 · manual · мовчить 34 дні</div></div><span class="seg lost">lost</span></div>
+    <div id="empty" class="empty" hidden>🔍 Нічого не знайдено<br><small>Змініть пошук або <u onclick="toast('У проді: POST /clients')">додайте першого клієнта</u></small></div>
   </div>
   <p style="color:var(--tg-hint);font-size:12px;margin-top:12px">Клік по клієнту → у проді картка-досьє (історія угод, задачі, audit). Видалення — soft-delete + запис в audit_log.</p>
 </main>
@@ -73,12 +84,18 @@
     if(p.bg_color)r.setProperty('--tg-bg',p.bg_color);if(p.secondary_bg_color)r.setProperty('--tg-card',p.secondary_bg_color);
     if(p.text_color)r.setProperty('--tg-text',p.text_color);if(p.hint_color)r.setProperty('--tg-hint',p.hint_color);
     if(p.link_color)r.setProperty('--tg-link',p.link_color);if(p.button_color)r.setProperty('--tg-btn',p.button_color);})();
+  function toast(msg,ms){let el=document.querySelector('.toast');
+    if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
+    el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
+    el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}
   let seg='all';
   document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');seg=c.dataset.s;filter();});
   function filter(){const q=document.getElementById('q').value.toLowerCase();
+    let visible=0;
     document.querySelectorAll('#list .row').forEach(r=>{
       const okS=(seg==='all'||r.dataset.seg===seg), okQ=!q||r.textContent.toLowerCase().includes(q);
-      r.classList.toggle('hidden',!(okS&&okQ));});}
+      const show=okS&&okQ; r.classList.toggle('hidden',!show); if(show)visible++;});
+    document.getElementById('empty').hidden=visible>0;}
   document.querySelectorAll('#list .row[data-href]').forEach(r=>r.onclick=()=>location=r.dataset.href);
 </script>
 </body>

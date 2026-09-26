@@ -146,7 +146,7 @@ CREATE TABLE integrations (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   provider      TEXT NOT NULL
-                CHECK (provider IN ('prom','rozetka','novaposhta','checkbox','liqpay','monobank')),
+                CHECK (provider IN ('prom','rozetka','novaposhta','checkbox','liqpay','monobank','sendpulse','turbosms')),
   credentials   JSONB NOT NULL DEFAULT '{}',          -- ENCRYPTED! {"api_key": "enc:..."}
   settings      JSONB NOT NULL DEFAULT '{}',          -- {"warehouse_from": "Київ-1", ...}
   is_active     BOOLEAN NOT NULL DEFAULT TRUE,
@@ -233,7 +233,7 @@ CREATE INDEX idx_autolog_tenant ON automation_logs(tenant_id, created_at DESC);
 -- old_values/new_values — для расследования "кто удалил клиента".
 -- ============================================================
 CREATE TABLE audit_log (
-  id            BIGGENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   actor_id      UUID REFERENCES users(id) ON DELETE SET NULL,
   entity_type   TEXT NOT NULL,                       -- 'client' | 'deal' | 'task' | 'integration' | ...
@@ -248,6 +248,25 @@ CREATE TABLE audit_log (
 );
 CREATE INDEX idx_audit_tenant_entity ON audit_log(tenant_id, entity_type, entity_id, created_at DESC);
 CREATE INDEX idx_audit_actor ON audit_log(actor_id, created_at DESC);
+
+-- ============================================================
+-- 11. INTERACTIONS — історія комунікацій (таймлайн клієнта)
+-- Дзвінки/листи/SMS/зустрічі/нотатки. Джерело даних для таймлайну
+-- в картці клієнта та для AI (churn/next-action по реальних контактах).
+-- ============================================================
+CREATE TABLE interactions (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  client_id     UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  deal_id       UUID REFERENCES deals(id) ON DELETE SET NULL,
+  author_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  channel       TEXT NOT NULL
+                CHECK (channel IN ('call','sms','email','meeting','note','auto')),
+  body          TEXT NOT NULL DEFAULT '',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_interactions_client ON interactions(client_id, created_at DESC);
+CREATE INDEX idx_interactions_tenant ON interactions(tenant_id, created_at DESC);
 
 -- ============================================================
 -- ЗАМЕЧАНИЕ ДЛЯ FASTAPI:

@@ -227,6 +227,29 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
 
 
+class Interaction(Base):
+    """Історія комунікацій: дзвінки/листи/SMS/зустрічі/нотатки + auto-записи автоматизацій."""
+
+    __tablename__ = "interactions"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    client_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
+    )
+    deal_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("deals.id", ondelete="SET NULL")
+    )
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)  # call/sms/email/meeting/note/auto
+    body: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
 Index("ix_users_tenant", User.tenant_id)
 Index("ix_clients_tenant", Client.tenant_id)
 Index("ix_deals_tenant_stage", Deal.tenant_id, Deal.stage)
+Index("ix_interactions_client", Interaction.client_id, Interaction.created_at.desc())

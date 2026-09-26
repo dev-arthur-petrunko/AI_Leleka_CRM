@@ -34,7 +34,15 @@
   .tl div{margin-bottom:10px} .tl small{color:var(--tg-hint)}
   .btns{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
   .tg-btn{border:none;border-radius:10px;background:var(--tg-btn);color:var(--tg-btn-text);
-    font-size:14px;font-weight:600;padding:11px 18px;cursor:pointer}
+    font-size:14px;font-weight:600;padding:11px 18px;cursor:pointer;
+    transition:transform .15s ease,opacity .15s ease}
+  .tg-btn:hover{opacity:.92} .tg-btn:active{transform:scale(.97)}
+  .card,.profile{transition:box-shadow .2s ease} .card:hover{box-shadow:0 4px 14px rgba(0,0,0,.14)}
+  .tab{transition:color .15s ease}
+  .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(16px);
+    background:#17212b;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;
+    opacity:0;transition:all .25s ease;z-index:50;pointer-events:none;max-width:90vw}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
   .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
   .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
@@ -47,9 +55,9 @@
     <div><div style="font-size:19px;font-weight:700">Олена <span class="seg">vip</span></div>
     <div class="sub">+380970000001 · form · Менеджер 1 · згода GDPR ✓</div></div>
   </div>
-  <div class="btns"><button class="tg-btn" onclick="alert('У проді: дзвінок / SMS')">📞 Зателефонувати</button>
-    <button class="tg-btn" onclick="alert('У проді: POST /deals')">+ Угода</button>
-    <button class="tg-btn" onclick="alert('У проді: POST /tasks')">+ Задача</button></div>
+  <div class="btns"><button class="tg-btn" onclick="toast('У проді: дзвінок / SMS + запис у interactions')">📞 Зателефонувати</button>
+    <button class="tg-btn" onclick="location='deals.html'">+ Угода</button>
+    <button class="tg-btn" onclick="location='tasks.html'">+ Задача</button></div>
   <div class="grid">
     <div class="card"><h2>Досьє</h2>
       <div class="kv"><span>Телефон</span><b>+380970000001</b></div>
@@ -87,6 +95,10 @@
   <a class="tab" href="billing.html"><span class="ico">💳</span>Тариф</a>
   <a class="tab" href="integrations.html"><span class="ico">⚙️</span>Ще</a>
 </nav>
-<script>(function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();</script>
+<script>(function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+function toast(msg,ms){let el=document.querySelector('.toast');
+if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
+el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
+el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}</script>
 </body>
 </html>

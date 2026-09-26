@@ -24,7 +24,14 @@
   .st{margin-left:auto;font-size:11px;font-weight:700;border-radius:20px;padding:3px 10px;white-space:nowrap}
   .st.off{background:var(--tg-sep);color:var(--tg-hint)} .st.on{background:#31b545;color:#fff}
   .mini{border:1px solid var(--tg-btn);color:var(--tg-link);background:transparent;border-radius:8px;
-    font-size:12.5px;font-weight:600;padding:6px 12px;cursor:pointer;white-space:nowrap}
+    font-size:12.5px;font-weight:600;padding:6px 12px;cursor:pointer;white-space:nowrap;
+    transition:transform .15s ease,opacity .15s ease}
+  .mini:active{transform:scale(.95)}
+  .row{transition:background .15s ease} .tab{transition:color .15s ease}
+  .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(16px);
+    background:#17212b;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;
+    opacity:0;transition:all .25s ease;z-index:50;pointer-events:none;max-width:90vw}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
   .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
   .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
@@ -56,7 +63,11 @@
 </nav>
 <script>
   (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
-  function t(p){alert('['+p+'] stub: додайте ключ через POST /integrations — у проді тут реальний ping адаптера з ретраями.');}
+  function toast(msg,ms){let el=document.querySelector('.toast');
+    if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
+    el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
+    el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}
+  function t(p){toast('['+p+'] stub: додайте ключ через POST /integrations — у проді тут реальний ping адаптера з ретраями.');}
 </script>
 </body>
 </html>

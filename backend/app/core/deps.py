@@ -53,3 +53,24 @@ def require_role(*allowed: str):
         return user
 
     return checker
+
+
+def require_plan_feature(feature: str):
+    """Блокує платні фічі для тарифів без них (402). Вішається на роутер цілком."""
+
+    def checker(
+        user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    ) -> User:
+        from app.models import Tenant
+        from app.services.billing import current_plan
+
+        tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+        if feature not in current_plan(tenant)["features"]:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Фіча '{feature}' недоступна на тарифі '{tenant.plan}'. "
+                "POST /billing/upgrade",
+            )
+        return user
+
+    return checker

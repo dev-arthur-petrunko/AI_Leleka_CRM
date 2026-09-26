@@ -12,12 +12,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_tenant
+from app.core.deps import get_current_tenant, require_plan_feature
 from app.db.session import get_db
 from app.models import Client, Deal
 from app.services import ai
 
-router = APIRouter(prefix="/analytics", tags=["analytics"])
+# AI-аналітика — платна фіча: Free-тариф отримує 402
+router = APIRouter(prefix="/analytics", tags=["analytics"],
+                   dependencies=[Depends(require_plan_feature("ai_analytics"))])
 
 
 @router.get("/kpi")

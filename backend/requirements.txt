@@ -11,3 +11,5 @@ python-multipart==0.0.12
 cryptography==43.0.1
 redis==5.0.8
 requests==2.32.3
+slowapi==0.1.9
+email-validator==2.2.0

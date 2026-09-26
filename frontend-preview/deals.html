@@ -23,8 +23,13 @@
   .col h3 .sum { display:block; color:var(--tg-text); font-size:14px; }
   .col.dragover { outline:2px dashed var(--tg-link); }
   .deal { background:var(--tg-card); border-radius:10px; padding:10px 12px; margin-bottom:8px;
-    box-shadow:0 1px 3px rgba(0,0,0,.15); cursor:grab; font-size:14px; }
+    box-shadow:0 1px 3px rgba(0,0,0,.15); cursor:grab; font-size:14px;
+    transition:transform .2s ease, box-shadow .2s ease; }
   .deal:active { cursor:grabbing; }
+  .deal.dragging { transform:rotate(2deg) scale(1.04); box-shadow:0 10px 22px rgba(0,0,0,.28); opacity:.95; }
+  .empty-hint { font-size:12.5px; color:var(--tg-hint); text-align:center; padding:14px 6px;
+    border:1.5px dashed var(--tg-sep); border-radius:10px; }
+  .col.flash { outline:2px solid var(--tg-link); }
   .deal .t { font-weight:600; }
   .deal .amt { font-weight:800; font-size:16px; margin:4px 0; }
   .deal .meta { font-size:12px; color:var(--tg-hint); }
@@ -32,7 +37,14 @@
   .hot{background:#e53935} .warm{background:#f2994a} .cold{background:#3390ec}
   .stuck { border-left:4px solid #e53935; }
   .tg-btn { border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
-    font-size:14px; font-weight:600; padding:10px 18px; margin-bottom:16px; cursor:pointer; }
+    font-size:14px; font-weight:600; padding:10px 18px; margin-bottom:16px; cursor:pointer;
+    transition:transform .15s ease, opacity .15s ease; }
+  .tg-btn:hover { opacity:.92; } .tg-btn:active { transform:scale(.97); }
+  .tab { transition:color .15s ease; }
+  .toast { position:fixed; left:50%; bottom:84px; transform:translateX(-50%) translateY(16px);
+    background:#17212b; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px;
+    opacity:0; transition:all .25s ease; z-index:50; pointer-events:none; max-width:90vw; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   .tabbar { position:fixed; bottom:0; left:0; right:0; background:var(--tg-card);
     border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
   .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); cursor:pointer; text-decoration:none; }
@@ -40,7 +52,7 @@
 </style>
 </head>
 <body>
-<header><h1>🪶 AI Leleka CRM <span>угоди</span></h1><button class="tg-btn" style="margin:0" onclick="alert('У проді: POST /deals')">+ Угода</button></header>
+<header><h1>🪶 AI Leleka CRM <span>угоди</span></h1><button class="tg-btn" style="margin:0" onclick="toast('У проді: POST /deals')">+ Угода</button></header>
 <main>
   <div class="board" id="board">
     <div class="col" data-stage="new"><h3>🆕 New<span class="sum" data-sum></span></h3>
@@ -79,16 +91,28 @@
     if(p.text_color)r.setProperty('--tg-text',p.text_color);if(p.hint_color)r.setProperty('--tg-hint',p.hint_color);
     if(p.link_color)r.setProperty('--tg-link',p.link_color);if(p.button_color)r.setProperty('--tg-btn',p.button_color);})();
   function recount(){document.querySelectorAll('.col').forEach(c=>{
+    c.querySelectorAll('.empty-hint').forEach(h=>h.remove());
     let n=0,s=0;c.querySelectorAll('.deal .amt').forEach(a=>{n++;s+=parseInt(a.textContent.replace(/\D/g,''))||0});
-    c.querySelector('[data-sum]').textContent=n+' угод · '+s.toLocaleString('uk-UA')+' ₴';});}
+    c.querySelector('[data-sum]').textContent=n+' угод · '+s.toLocaleString('uk-UA')+' ₴';
+    if(!n){const h=document.createElement('div');h.className='empty-hint';h.textContent='порожньо — перетягніть сюди угоду';c.appendChild(h);}});}
   let drag=null;
-  document.querySelectorAll('.deal').forEach(d=>{d.addEventListener('dragstart',()=>drag=d);});
+  document.querySelectorAll('.deal').forEach(d=>{d.addEventListener('dragstart',()=>{drag=d;d.classList.add('dragging');});
+    d.addEventListener('dragend',()=>d.classList.remove('dragging'));});
+  // Підсвітка стадії з дашборда (?stage=negotiation) + toast-підтвердження дропу
+  (function(){const st=new URLSearchParams(location.search).get('stage');
+    if(!st)return;const col=document.querySelector('.col[data-stage="'+st+'"]');
+    if(col){col.classList.add('flash');col.scrollIntoView({inline:'center',block:'nearest'});}})();
   document.querySelectorAll('.col').forEach(c=>{
     c.addEventListener('dragover',e=>{e.preventDefault();c.classList.add('dragover');});
     c.addEventListener('dragleave',()=>c.classList.remove('dragover'));
     c.addEventListener('drop',e=>{e.preventDefault();c.classList.remove('dragover');
-      if(drag){c.appendChild(drag);drag=null;recount();}});});
+      if(drag){c.appendChild(drag);drag=null;recount();
+        toast('Угоду переміщено → у проді PATCH /deals/{id}/stage');}});});
   recount();
+  function toast(msg,ms){let el=document.querySelector('.toast');
+    if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
+    el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
+    el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}
 </script>
 </body>
 </html>

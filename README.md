@@ -2,24 +2,26 @@
 
 ## Запуск
 ```bash
+cp backend/.env.example backend/.env
+# в .env вписати SECRET_KEY (openssl rand -hex 32) і CREDENTIALS_KEY (Fernet generate_key)
 docker compose up --build
 # API: http://localhost:8000/docs
-# Health: http://localhost:8000/health
 ```
+Без Docker — ті ж змінні в env, далі `uvicorn app.main:app --reload` з `backend/`.
 
-Без Docker:
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+## Безпека (критично)
+- Старі дефолтні секрети з репозиторію **скомпрометовані** (репо публічне): без `SECRET_KEY`≥32 app не стартує.
+- Ключі інтеграцій у БД — тільки Fernet-шифровані (`encrypt_credentials` у upsert, GET їх не повертає).
+- RBAC: write — owner/admin/manager; інтеграції — owner/admin; upgrade тарифу — тільки owner (+audit).
+- Платні фічі (`ai_analytics`, `marketplace`, `novaposhta`, `fiscal`) гейтяться на API (402), не лише в UI.
+- Rate-limit: 10/хв на `/auth/login`. CORS — лише `FRONTEND_ORIGINS`.
+- Міграції: `backend/alembic/` підключено (`alembic revision --autogenerate`, `upgrade head`).
 
-## Что уже есть
-- `db/schema.sql` — SaaS-схема: tenants, users, clients, deals, tasks, integrations, webhook_events, automation_rules/logs, audit_log
-- `backend/app/models/` — SQLAlchemy-модели 1-в-1
-- `backend/app/core/deps.py` — `get_current_tenant()` из JWT, `require_role()`
-- Routers: `/auth`, `/clients`, `/deals`, `/tasks`, `/webhooks`
-- Webhook inbox с дедупликацией `(provider, external_id)` и ретраями
+## Що вже є
+- SaaS-схема (11 таблиць: +`interactions` — таймлайн комунікацій)
+- Routers: `/auth` (+invite), `/clients` (+пошук/фільтри/пагінація, CSV-імпорт, interactions), `/deals` (+фільтри, CSV-експорт), `/tasks`, `/webhooks`, `/automations`, `/analytics` (платно), `/billing`, `/integrations` (шифр + SMS), `/notifications` (Redis-інбокс)
+- Движок автоматизацій викликає **реальні** адаптери: ТТН НП, SMS SendPulse/TurboSMS; кожна дія пише слід у interactions
+- Превʼю фронту `frontend-preview/` (7 екранів, Telegram-стиль, toast, скелетони, empty states)
 
 ## Правила
 1. Каждый запрос к бизнес-таблицам: `WHERE tenant_id = current_tenant`
