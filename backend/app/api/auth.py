@@ -1,6 +1,7 @@
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
@@ -45,10 +46,12 @@ def register(data: RegisterTenantIn, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenOut)
 @limiter.limit("10/minute")
-def login(request: Request, data: LoginIn, db: Session = Depends(get_db)):
-    """Брутфорс-захист: 10 спроб/хв з IP."""
-    user = db.query(User).filter(User.email == data.email).first()
-    if not user or not verify_password(data.password, user.password_hash):
+def login(request: Request, form: OAuth2PasswordRequestForm = Depends(),
+          db: Session = Depends(get_db)):
+    """Брутфорс-захист: 10 спроб/хв з IP. username = email (стандарт OAuth2 password flow,
+    щоб кнопка Authorize у Swagger працювала з коробки)."""
+    user = db.query(User).filter(User.email == form.username).first()
+    if not user or not verify_password(form.password, user.password_hash):
         raise HTTPException(401, "Invalid credentials")
     from datetime import datetime, timezone
     user.last_login_at = datetime.now(timezone.utc)
