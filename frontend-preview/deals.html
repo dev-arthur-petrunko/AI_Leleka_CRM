@@ -33,6 +33,19 @@
   .empty-hint { font-size:12.5px; color:var(--tg-hint); text-align:center; padding:14px 6px;
     border:1.5px dashed var(--tg-sep); border-radius:10px; }
   .col.flash { outline:2px solid var(--tg-link); }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex;
+    align-items:flex-end; justify-content:center; z-index:40; opacity:0; pointer-events:none;
+    transition:opacity .2s ease; }
+  .overlay.show { opacity:1; pointer-events:auto; }
+  .sheet { background:var(--tg-card); border-radius:16px 16px 0 0; padding:18px; width:100%;
+    max-width:480px; transform:translateY(30px); transition:transform .22s ease; }
+  .overlay.show .sheet { transform:translateY(0); }
+  .sheet h3 { font-size:16px; margin-bottom:12px; }
+  .field { width:100%; border:1px solid var(--tg-sep); border-radius:10px; background:var(--tg-bg);
+    color:var(--tg-text); font-size:15px; padding:11px 14px; margin-bottom:10px; outline:none; }
+  .sheet .row-btns { display:flex; gap:10px; }
+  .sheet .row-btns .tg-btn { margin:4px 0 0; flex:1; }
+  .tg-btn.secondary { background:transparent; color:var(--tg-link); border:1px solid var(--tg-sep); }
   .deal .t { font-weight:600; }
   .deal .amt { font-weight:800; font-size:16px; margin:4px 0; }
   .deal .meta { font-size:12px; color:var(--tg-hint); }
@@ -83,6 +96,18 @@
   </div>
   <p style="color:var(--tg-hint);font-size:12px;margin-top:12px">Drag &amp; drop між колонками → у проді PATCH /deals/{id}/stage (тригери deal_won/deal_lost спрацюють автоматично).</p>
 </main>
+<div class="overlay" id="dealModal" onclick="if(event.target===this)closeDealModal()">
+  <div class="sheet">
+    <h3>Нова угода → New</h3>
+    <input class="field" id="fTitle" placeholder="Назва (напр. Замовлення #500)" maxlength="80">
+    <input class="field" id="fAmount" placeholder="Сума, грн" inputmode="numeric" maxlength="12">
+    <input class="field" id="fClient" placeholder="Клієнт (необовʼязково)" maxlength="60">
+    <div class="row-btns">
+      <button class="tg-btn secondary" onclick="closeDealModal()">Скасувати</button>
+      <button class="tg-btn" onclick="saveDeal()">Створити</button>
+    </div>
+  </div>
+</div>
 <nav class="tabbar">
   <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
   <a class="tab active" href="deals.html"><span class="ico">🤝</span>Угоди</a>
@@ -112,20 +137,31 @@
         onEnd: (evt) => {
   recount();
   function addDeal(){
-    const title = prompt('Назва угоди:', 'Замовлення #');
-    if (!title) return;
-    const amount = prompt('Сума, грн:', '5000') || '0';
+    document.getElementById('dealModal').classList.add('show');
+    setTimeout(()=>document.getElementById('fTitle').focus(), 250);
+  }
+  function closeDealModal(){
+    document.getElementById('dealModal').classList.remove('show');
+  }
+  function saveDeal(){
+    const title = document.getElementById('fTitle').value.trim() || 'Замовлення (без назви)';
+    const amount = document.getElementById('fAmount').value;
+    const client = document.getElementById('fClient').value.trim() || 'вручну';
     const col = document.querySelector('.col[data-stage="new"]');
     col.querySelectorAll('.empty-hint').forEach(h=>h.remove());
     const d = document.createElement('div');
     d.className = 'deal'; d.dataset.id = 'new-' + Date.now();
-    const amt = document.createElement('div'); amt.className = 'amt';
-    amt.textContent = Number(amount.replace(/\D/g,'' )||0).toLocaleString('uk-UA') + ' ₴';
-    const meta = document.createElement('div'); meta.className = 'meta';
-    meta.textContent = 'вручну · сьогодні';
     const t = document.createElement('div'); t.className = 't'; t.textContent = title;
+    const amt = document.createElement('div'); amt.className = 'amt';
+    amt.textContent = Number(String(amount).replace(/\D/g,'')||0).toLocaleString('uk-UA') + ' ₴';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    meta.textContent = client + ' · сьогодні';
     d.append(t, amt, meta);
     col.prepend(d);
+    document.getElementById('fTitle').value = '';
+    document.getElementById('fAmount').value = '';
+    document.getElementById('fClient').value = '';
+    closeDealModal();
     recount();
     toast('Угоду створено в New (у проді: POST /deals)');
   }
