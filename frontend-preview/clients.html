@@ -52,9 +52,12 @@
     border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
   .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); cursor:pointer; text-decoration:none; }
   .tab .ico { font-size:22px; display:block; } .tab.active { color:var(--tg-link); font-weight:600; }
+  body.leleka { --tg-bg:#faf6ef; --tg-card:#fffdf8; --tg-text:#3b2f2f; --tg-hint:#a08c7a;
+    --tg-link:#c96f2f; --tg-btn:#c96f2f; --tg-sep:#eadfce; --tg-header:#3b2f2f; }
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
 <header><div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>🪶 AI Leleka CRM <span>клієнти</span></h1></div><div><button class="tg-btn" style="margin:0 8px 0 0" onclick="location='tasks.html'">+ Задача</button><button class="tg-btn" style="margin:0" onclick="toast('У проді: POST /clients → тригер new_lead')">+ Клієнт</button></div></header>
 <main>
   <input class="search" id="q" placeholder="🔍 Пошук за ім'ям або телефоном…" oninput="filter()">

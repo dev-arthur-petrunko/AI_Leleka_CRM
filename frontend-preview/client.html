@@ -46,9 +46,12 @@
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
   .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
   .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
+  body.leleka { --tg-bg:#faf6ef; --tg-card:#fffdf8; --tg-text:#3b2f2f; --tg-hint:#a08c7a;
+    --tg-link:#c96f2f; --tg-btn:#c96f2f; --tg-sep:#eadfce; --tg-header:#3b2f2f; }
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
 <header><button onclick="history.length>1?history.back():location='clients.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><div>Картка клієнта</div></header>
 <main>
   <div class="profile"><div class="ava">О</div>
