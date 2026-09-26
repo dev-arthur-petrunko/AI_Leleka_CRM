@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Про нас</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%233390ec'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3EL%3C/text%3E%3C/svg%3E">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); }
+  header.top { position:sticky; top:0; z-index:10; background:var(--tg-header); color:#fff;
+    padding:12px 20px; display:flex; align-items:center; gap:10px; }
+  header.top h1 { font-size:17px; } header.top .sp { flex:1; }
+  .login-btn { border:1px solid rgba(255,255,255,.4); color:#fff; background:transparent;
+    border-radius:20px; padding:7px 18px; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none;
+    transition:transform .15s ease; }
+  .login-btn:active { transform:scale(.95); }
+  main { max-width:1000px; margin:0 auto; padding:20px 16px 40px; }
+  .hero { display:grid; grid-template-columns:1.1fr .9fr; gap:16px; align-items:center;
+    background:var(--tg-card); border-radius:16px; padding:26px; margin-bottom:16px; }
+  @media(max-width:700px){.hero{grid-template-columns:1fr;text-align:center}}
+  .hero h2 { font-size:30px; line-height:1.2; margin-bottom:10px; }
+  .hero h2 span { color:var(--tg-link); }
+  .hero p { color:var(--tg-hint); font-size:15.5px; line-height:1.55; margin-bottom:16px; }
+  .hero img { width:100%; max-width:320px; display:block; margin:0 auto;
+    filter:drop-shadow(0 14px 26px rgba(0,0,0,.3)); }
+  .cta-row { display:flex; gap:10px; flex-wrap:wrap; }
+  .tg-btn { border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
+    font-size:15px; font-weight:700; padding:13px 24px; cursor:pointer; text-decoration:none;
+    transition:transform .15s ease, opacity .15s ease; display:inline-block; }
+  .tg-btn:hover{opacity:.92} .tg-btn:active{transform:scale(.97)}
+  .tg-btn.ghost { background:transparent; color:var(--tg-link); border:1px solid var(--tg-sep); }
+  .strip { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+  @media(max-width:600px){.strip{grid-template-columns:1fr}}
+  .strip .card { text-align:center; }
+  .card { background:var(--tg-card); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .card h2 { font-size:19px; margin-bottom:10px; }
+  .card p, .card li { font-size:14.5px; line-height:1.6; }
+  .card ul { padding-left:20px; } .card li { margin-bottom:6px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+  .feat { background:var(--tg-card); border-radius:14px; padding:18px; margin-bottom:12px; }
+  .feat .ico { font-size:28px; } .feat h3 { font-size:15.5px; margin:6px 0; }
+  .feat p { font-size:13.5px; color:var(--tg-hint); line-height:1.55; }
+  .ai-block { display:grid; grid-template-columns:.8fr 1.2fr; gap:16px; align-items:center;
+    background:var(--tg-card); border-radius:14px; padding:22px; margin-bottom:16px; }
+  @media(max-width:700px){.ai-block{grid-template-columns:1fr}}
+  .ai-block img { width:100%; max-width:260px; display:block; margin:0 auto;
+    filter:drop-shadow(0 14px 26px rgba(0,0,0,.3)); }
+  .steps { counter-reset:st; }
+  .step { display:flex; gap:12px; padding:10px 0; font-size:14.5px; align-items:flex-start; }
+  .step::before { counter-increment:st; content:counter(st); flex-shrink:0; width:30px; height:30px;
+    border-radius:50%; background:var(--tg-btn); color:var(--tg-btn-text);
+    display:flex; align-items:center; justify-content:center; font-weight:700; }
+  .plans { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  @media(max-width:700px){.plans{grid-template-columns:1fr}}
+  .plan { background:var(--tg-card); border-radius:14px; padding:18px; text-align:center; }
+  .plan.hot { outline:2px solid var(--tg-btn); }
+  .plan .price { font-size:26px; font-weight:800; margin:6px 0; }
+  .plan ul { list-style:none; font-size:13px; color:var(--tg-hint); line-height:1.9; margin-bottom:12px; }
+  footer { text-align:center; color:var(--tg-hint); font-size:12.5px; padding:20px; line-height:1.8; }
+  footer a { color:var(--tg-link); }
+  body.leleka { --tg-bg:#faf6ef; --tg-card:#fffdf8; --tg-text:#3b2f2f; --tg-hint:#a08c7a;
+    --tg-link:#c96f2f; --tg-btn:#c96f2f; --tg-sep:#eadfce; --tg-header:#3b2f2f; }
+</style>
+</head>
+<body>
+<header class="top">
+  <img src="assets/leleka-mascot.png" alt="Лелека" style="width:34px;height:34px;border-radius:50%;object-fit:cover;object-position:center 12%;background:#0e1621">
+  <h1>AI Leleka CRM</h1><span class="sp"></span>
+  <a class="login-btn" href="dashboard.html">Увійти →</a>
+</header>
+<main>
+  <div class="hero">
+    <div>
+      <h2>Лелека приносить <span>клієнтів</span> 👶</h2>
+      <p>Проста CRM для малого бізнесу України: картки клієнтів, воронка продажів, автоматизації
+      і AI-аналітика. Старт за 5 хвилин — без навчання і без Excel.</p>
+      <div class="cta-row">
+        <a class="tg-btn" href="dashboard.html">Спробувати безкоштовно</a>
+        <a class="tg-btn ghost" href="#tariffs">Тарифи</a>
+      </div>
+    </div>
+    <img src="assets/leleka-hero.png" alt="Лелека з CRM">
+  </div>
+
+  <div class="strip">
+    <div class="card"><div style="font-size:26px;font-weight:800">0 ₴</div><div style="color:var(--tg-hint);font-size:13px">старт для першого користувача</div></div>
+    <div class="card"><div style="font-size:26px;font-weight:800">5 хв</div><div style="color:var(--tg-hint);font-size:13px">від реєстрації до першої угоди</div></div>
+    <div class="card"><div style="font-size:26px;font-weight:800">24/7</div><div style="color:var(--tg-hint);font-size:13px">AI пильнує угоди і клієнтів</div></div>
+  </div>
+
+  <div class="card">
+    <h2>🪹 Чому лелека?</h2>
+    <p>В українській культурі <b>лелека — символ дому, родини й турботи</b>: гніздиться на даху оселі,
+    щороку повертається в те саме гніздо і приносить щастя. <b>Leleka CRM</b> так само «гніздиться»
+    у вашому бізнесі — не губить жодної заявки і приносить нових клієнтів так само, як лелека приносить дітей.</p>
+  </div>
+
+  <h2 style="font-size:17px;margin:18px 4px 10px">Переваги — навіщо і що дає</h2>
+  <div class="grid2">
+    <div class="feat"><div class="ico">🚀</div><h3>Старт без навчання</h3><p>Картки клієнтів, воронка, нагадування — усе, без чого CRM не CRM. Менеджер розбирається сам за 5 хвилин.</p></div>
+    <div class="feat"><div class="ico">🔁</div><h3>Автоматизації «якщо → то»</h3><p>Новий лід — менеджеру; угода зависла 3 дні — нагадування; оплата — ТТН Нової Пошти і чек. Без участі людини.</p></div>
+    <div class="feat"><div class="ico">🇺🇦</div><h3>Українське з коробки</h3><p>Нова Пошта, Checkbox РРО/ПРРО, LiqPay і Monobank, Prom і Rozetka, інтерфейс українською.</p></div>
+    <div class="feat"><div class="ico">🔒</div><h3>Безпека і довіра</h3><p>Журнал «хто що змінив», ролі доступу, шифрування ключів. Базу «тихо» не зіллють.</p></div>
+  </div>
+
+  <div class="ai-block">
+    <img src="assets/leleka-ai.png" alt="AI-аналітика">
+    <div>
+      <h2>🤖 AI: аналіз і тексти листів</h2>
+      <ul>
+        <li><b>Оцінка лідів</b> hot/warm/cold — дзвоніть спочатку найперспективнішим.</li>
+        <li><b>Прогноз продажів</b> на місяць і <b>ризик відтоку</b> — кого рятувати вже зараз.</li>
+        <li><b>Наступна найкраща дія</b> — кому зателефонувати сьогодні.</li>
+        <li><b>AI-тексти клієнтам:</b> персоналізовані листи, follow-up після мовчання 24 год, запити відгуків — менеджер лише натискає «надіслати».</li>
+      </ul>
+      <p style="font-size:12.5px;color:var(--tg-hint);margin-top:8px">У зовнішній AI йдуть лише знеособлені дані (GDPR).</p>
+    </div>
+  </div>
+
+  <div class="card steps">
+    <h2>Як це працює — 3 кроки</h2>
+    <div class="step"><div><b>Зареєструйтесь</b> — компанія і власник за хвилину, перший користувач безкоштовно.</div></div>
+    <div class="step"><div><b>Підключіть магазин</b> — Prom/Rozetka підтягнуть замовлення самі або імпортуйте CSV.</div></div>
+    <div class="step"><div><b>Увімкніть автоматизації й AI</b> — 5 правил одним кліком, дашборд покаже гарячих лідів.</div></div>
+  </div>
+
+  <h2 id="tariffs" style="font-size:17px;margin:18px 4px 10px">Тарифи</h2>
+  <div class="plans">
+    <div class="plan"><b>Free</b><div class="price">0 ₴</div>
+      <ul><li>1 користувач</li><li>Картки + воронка + задачі</li></ul>
+      <a class="tg-btn" href="dashboard.html">Почати</a></div>
+    <div class="plan hot"><b>Pro · 350 ₴/міс</b><div class="price">350 ₴</div>
+      <ul><li>до 5 місць</li><li>AI + маркетплейси + НП</li></ul>
+      <a class="tg-btn" href="dashboard.html">Обрати Pro</a></div>
+    <div class="plan"><b>Team · 300 ₴/міс</b><div class="price">300 ₴</div>
+      <ul><li>5+ місць</li><li>+ Checkbox РРО</li></ul>
+      <a class="tg-btn" href="dashboard.html">Обрати Team</a></div>
+  </div>
+
+  <div class="ai-block" style="margin-top:16px">
+    <img src="assets/leleka-support.png" alt="Підтримка">
+    <div>
+      <h2>Лелека на звʼязку 📞</h2>
+      <p style="font-size:14.5px;color:var(--tg-hint);line-height:1.6">Підтримка українською у вашому часовому поясі.
+      Навчимо команду, допоможемо з переїздом з Excel і налаштуємо перші автоматизації разом.</p>
+      <div class="cta-row" style="margin-top:12px"><a class="tg-btn" href="dashboard.html">Відкрити демо</a></div>
+    </div>
+  </div>
+</main>
+<footer>AI Leleka CRM · зроблено в Україні 🇺🇦<br>
+<a href="dashboard.html">Демо-кабінет</a> · Free для першого користувача</footer>
+<script>(function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
+</body>
+</html>
