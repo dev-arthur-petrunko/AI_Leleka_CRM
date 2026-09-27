@@ -13,11 +13,6 @@ class RegisterTenantIn(BaseModel):
     password: str
 
 
-class LoginIn(BaseModel):
-    email: EmailStr
-    password: str
-
-
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -26,8 +21,12 @@ class TokenOut(BaseModel):
 # ---------- Clients ----------
 class ClientIn(BaseModel):
     name: str
+    first_name: str | None = None
+    last_name: str | None = None
     phone: str | None = None
     email: str | None = None
+    telegram_chat_id: str | None = None
+    viber_id: str | None = None
     source: str = "manual"
     notes: str = ""
     assigned_to: uuid.UUID | None = None
@@ -47,6 +46,8 @@ class DealIn(BaseModel):
     amount: float = 0
     stage: str = "new"
     manager_id: uuid.UUID | None = None
+    order_number: str | None = None
+    product_summary: str | None = None
 
 
 class DealOut(DealIn):

@@ -10,7 +10,7 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.db.session import get_db
 from app.core.rate import limiter
 from app.models import Tenant, User
-from app.schemas import LoginIn, RegisterTenantIn, TokenOut
+from app.schemas import RegisterTenantIn, TokenOut
 from app.services.billing import check_seats
 
 router = APIRouter(prefix="/auth", tags=["auth"])

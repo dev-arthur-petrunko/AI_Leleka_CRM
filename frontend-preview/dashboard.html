@@ -8,6 +8,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/countup.js@2.8.0/dist/countUp.umd.js"></script>
+<script src="assets/api.js"></script>
 <style>
   :root {
     --tg-bg: #e7ebef; --tg-card: #ffffff; --tg-text: #17212b;
@@ -86,7 +87,7 @@
 <header>
   <div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button>
   <h1><img src="assets/leleka-mascot.png" alt="Лелека" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:center 12%;vertical-align:-9px;margin-right:7px;box-shadow:0 2px 8px rgba(2,132,199,.45);background:#0e1621">AI Leleka CRM <span>дашборд</span></h1></div>
-  <div><span class="badge">PREVIEW · /analytics/dashboard</span><button class="theme-btn" id="themeBtn" title="Leleka web theme">🎨 Leleka</button></div>
+  <div><span class="badge">PREVIEW · /analytics/dashboard</span><a href="login.html" class="theme-btn" style="text-decoration:none" title="Увійти (живі дані)">🔑</a><button class="theme-btn" id="themeBtn" title="Leleka web theme">🎨 Leleka</button></div>
 </header>
 <main>
   <div class="kpis">
@@ -151,8 +152,30 @@
       toast(on ? '🎨 Тема Leleka: крем + теракот' : '💬 Тема Telegram');
     };
   })();
-  // Скелетони: патерн завантаження під реальний fetch (прод: fetch з Bearer → заповнити KPI)
-  // Після скелетонів цифри «докручуються» через CountUp
+  // Живі дані: якщо є токен (login.html) і API відповідає — підміняємо мок.
+  // Нема токена / офлайн / Free+402 → тихо лишається мок.
+  let liveDashboard = null;
+  const liveReady = api('/analytics/dashboard').then(d => { liveDashboard = d; applyLiveKpi(d); });
+  function fmt(n) { return Math.round(n).toLocaleString('uk-UA'); }
+  function applyLiveKpi(d) {
+    if (!d || !d.kpi) return;
+    const nums = document.querySelectorAll('.kpi .num');
+    const vals = [
+      [d.kpi.new_leads_30d, ''], [Math.round(d.kpi.conversion * 100), '%'],
+      [d.kpi.avg_check, ' ₴'], [d.forecast ? d.forecast.forecast_next_month : 0, ' ₴'],
+    ];
+    nums.forEach((n, i) => {
+      n.dataset.value = vals[i][0]; n.dataset.suffix = vals[i][1];
+      if (!n.classList.contains('skel')) n.textContent = fmt(vals[i][0]) + vals[i][1];
+    });
+    if (d.funnel && window.funnelChart) {
+      const order = ['new', 'contacted', 'negotiation', 'won', 'lost'];
+      const byStage = {}; d.funnel.forEach(f => byStage[f.stage] = f.count);
+      funnelChart.data.datasets[0].data = order.map(s => byStage[s] || 0);
+      funnelChart.update();
+    }
+  }
+  liveReady.then(d => { if (d) toast('🔗 Живі дані з API'); });
   document.querySelectorAll('.kpi .num').forEach(n => n.classList.add('skel'));
   setTimeout(() => {
     document.querySelectorAll('.kpi .num').forEach(n => {
@@ -198,6 +221,8 @@
         borderColor: '#31b545', backgroundColor: '#31b54522', tension: .3, fill: true, pointRadius: 4 }] },
     options: { plugins: { legend: { display: false } },
       scales: { y: { grid: { color: dark ? '#242f3d' : '#eef1f4' } }, x: { grid: { display: false } } } } });
+  // Якщо live-дані прийшли раніше за графіки — застосувати зараз
+  liveReady.then(() => applyLiveKpi(liveDashboard));
 </script>
 </body>
 </html>

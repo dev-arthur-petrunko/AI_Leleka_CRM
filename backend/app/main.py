@@ -12,6 +12,7 @@ from app.api import (
     clients,
     deals,
     integrations,
+    messages,
     notifications,
     tasks,
     webhooks,
@@ -43,6 +44,7 @@ app.include_router(automations.router)
 app.include_router(analytics.router)
 app.include_router(billing.router)
 app.include_router(integrations.router)
+app.include_router(messages.router)
 app.include_router(notifications.router)
 
 

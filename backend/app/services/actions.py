@@ -100,14 +100,48 @@ def _notify(db: Session, tenant_id: UUID, rule: AutomationRule, event: dict):
 
 
 def _send_message(db: Session, tenant_id: UUID, rule: AutomationRule, event: dict):
+    """Пріоритет каналів: telegram/viber/email (AI-персоналізований лист,
+    якщо канал доступний для клієнта і підключений тенантом) -> SMS (як і
+    раніше) -> stub. Це той самий сервіс, що й ручний POST /clients/{id}/message,
+    просто викликаний автоматично по правилу."""
+    from app.integrations.email import SmtpEmailAdapter
     from app.integrations.sms import SendPulseAdapter, TurboSmsAdapter
+    from app.integrations.telegram import TelegramAdapter
+    from app.integrations.viber import ViberAdapter
+    from app.services.messaging import compose_message
 
     cfg = rule.action_config or {}
-    template = cfg.get("template", "followup_24h")
     client = _event_client(db, tenant_id, event)
-    phone = (client.phone or "") if client else ""
+    deal = (db.query(Deal).filter(Deal.id == event["deal_id"], Deal.tenant_id == tenant_id).first()
+            if event.get("deal_id") else None)
+    if not client:
+        event["_message_sent"] = {"ok": False, "error": "no client in event"}
+        return
+
+    rich_channels = (("telegram", "telegram_chat_id", TelegramAdapter),
+                     ("viber", "viber_id", ViberAdapter),
+                     ("email", "email", SmtpEmailAdapter))
+    for provider, field, adapter_cls in rich_channels:
+        target = getattr(client, field)
+        row = _integration(db, tenant_id, provider)
+        if not (target and row):
+            continue
+        composed = compose_message(client, deal, provider)
+        creds = decrypt_credentials(row.credentials)
+        adapter = adapter_cls(creds, row.settings)
+        sent = (adapter.send_email(target, "Дякуємо за замовлення!", composed["text"])
+                if provider == "email" else adapter.send_message(target, composed["text"]))
+        if sent.get("ok") and not sent.get("stub"):
+            event["_message_sent"] = sent
+            _auto_interaction(db, tenant_id, event, f"{provider}: {composed['text'][:120]}")
+            return
+
+    # Жоден багатий канал не підключений/доступний для цього клієнта — як і
+    # раніше, падаємо на SMS (коротке повідомлення, без AI-шаблону).
+    template = cfg.get("template", "followup_24h")
+    phone = (client.phone or "")
     text = cfg.get("text", f"Доброго дня! Нагадуємо про ваше замовлення (шаблон {template}).")
-    sent: dict = {"ok": True, "stub": True}
+    sent = {"ok": True, "stub": True}
     for provider, adapter_cls in (("sendpulse", SendPulseAdapter), ("turbosms", TurboSmsAdapter)):
         row = _integration(db, tenant_id, provider)
         if row and phone:

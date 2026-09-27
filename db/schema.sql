@@ -64,8 +64,12 @@ CREATE TABLE clients (
   tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   assigned_to   UUID REFERENCES users(id) ON DELETE SET NULL,
   name          TEXT NOT NULL,
+  first_name    TEXT,                                 -- для персоналізації листів; може бути відсутнім
+  last_name     TEXT,                                 -- так само — не всі джерела це дають
   phone         TEXT,
   email         TEXT,
+  telegram_chat_id TEXT,                               -- відомий тільки якщо клієнт написав боту першим
+  viber_id      TEXT,                                  -- так само для Viber Business
   source        TEXT NOT NULL DEFAULT 'manual'
                 CHECK (source IN ('manual','form','prom','rozetka','import','other')),
   segment       TEXT NOT NULL DEFAULT 'new'
@@ -91,6 +95,8 @@ CREATE TABLE deals (
   client_id     UUID NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
   manager_id    UUID REFERENCES users(id) ON DELETE SET NULL,
   title         TEXT NOT NULL,
+  order_number  TEXT,                                 -- зовнішній номер замовлення (маркетплейс), не UUID угоди
+  product_summary TEXT,                                -- що саме купили — для AI-листа; може бути невідомо
   amount        NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
   currency      TEXT NOT NULL DEFAULT 'UAH',
   stage         TEXT NOT NULL DEFAULT 'new'

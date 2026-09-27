@@ -71,8 +71,12 @@ class Client(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    first_name: Mapped[str | None] = mapped_column(Text)  # для персоналізації листів; може бути відсутнім
+    last_name: Mapped[str | None] = mapped_column(Text)   # так само — не всі джерела (маркетплейс) його дають
     phone: Mapped[str | None] = mapped_column(Text)
     email: Mapped[str | None] = mapped_column(Text)
+    telegram_chat_id: Mapped[str | None] = mapped_column(Text)  # відомий тільки якщо клієнт написав боту першим
+    viber_id: Mapped[str | None] = mapped_column(Text)          # так само — Viber Business не дозволяє писати першим без цього
     source: Mapped[str] = mapped_column(String(20), default="manual")
     segment: Mapped[str] = mapped_column(String(20), default="new")
     notes: Mapped[str] = mapped_column(Text, default="")
@@ -95,6 +99,8 @@ class Deal(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
+    order_number: Mapped[str | None] = mapped_column(Text)      # зовнішній номер замовлення (маркетплейс), не UUID угоди
+    product_summary: Mapped[str | None] = mapped_column(Text)   # що саме купили — для AI-листа; може бути невідомо
     amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     currency: Mapped[str] = mapped_column(String(8), default="UAH")
     stage: Mapped[str] = mapped_column(String(20), default="new")

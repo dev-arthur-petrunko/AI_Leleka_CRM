@@ -27,12 +27,19 @@ _admin = require_role("owner", "admin")
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
+from app.integrations.email import SmtpEmailAdapter
+from app.integrations.telegram import TelegramAdapter
+from app.integrations.viber import ViberAdapter
+
 ADAPTERS = {"novaposhta": NovaPoshtaAdapter, "checkbox": CheckboxAdapter,
             "liqpay": LiqPayAdapter, "monobank": MonoAdapter,
             "prom": PromAdapter, "rozetka": RozetkaAdapter,
-            "sendpulse": SendPulseAdapter, "turbosms": TurboSmsAdapter}
+            "sendpulse": SendPulseAdapter, "turbosms": TurboSmsAdapter,
+            "telegram": TelegramAdapter, "email": SmtpEmailAdapter, "viber": ViberAdapter}
 
 # Яка платна фіча потрібна для провайдера (Free — жодної)
+# Канали листів клієнтам доступні на будь-якому тарифі — це базова функція,
+# а не преміум (на відміну від marketplace-синхронізації).
 PROVIDER_FEATURE = {"prom": "marketplace", "rozetka": "marketplace",
                     "novaposhta": "novaposhta", "checkbox": "fiscal",
                     "sendpulse": "marketplace", "turbosms": "marketplace"}
@@ -142,6 +149,8 @@ def import_orders(provider: str, user: User = Depends(_admin),
             db.flush()
         db.add(Deal(tenant_id=user.tenant_id, client_id=client.id,
                     title=f"Замовлення {provider} #{o['external_id']}",
+                    order_number=o["external_id"] or None,
+                    product_summary=o.get("product_summary"),
                     amount=o["amount"], stage="new", manager_id=user.id))
         created += 1
     from datetime import datetime, timezone

@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     PLATFORM_LIQPAY_PRIVATE_KEY: str = ""
     PLATFORM_MONO_TOKEN: str = ""
 
+    # AI-шаблони листів клієнтам (services/messaging.py). Без ключа —
+    # чесний локальний шаблон, MVP не падає. Модель — перевірте
+    # актуальну назву на docs.claude.com, вони змінюються з часом.
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-sonnet-5"
+
     class Config:
         env_file = ".env"
 

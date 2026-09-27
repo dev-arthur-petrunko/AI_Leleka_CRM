@@ -80,7 +80,11 @@ MAX_CSV_BYTES = 5 * 1024 * 1024  # 5 МБ вистачає з запасом н�
 def import_csv(file: UploadFile = File(...),
                user: User = Depends(_writer),
                db: Session = Depends(get_db)):
-    """Імпорт клієнтів з CSV/Excel-експорту. Колонки: name,phone,email,segment."""
+    """Імпорт клієнтів з CSV/Excel-експорту.
+
+    Колонки: name,phone,email,segment,first_name,last_name (останні дві —
+    опційні; якщо їх нема, персоналізація листів впаде на загальне вітання).
+    """
     if file.size is not None and file.size > MAX_CSV_BYTES:
         raise HTTPException(413, f"Файл завеликий (>{MAX_CSV_BYTES // 1024 // 1024} МБ)")
     raw = file.file.read(MAX_CSV_BYTES + 1)
@@ -97,6 +101,8 @@ def import_csv(file: UploadFile = File(...),
         if seg not in ("new", "regular", "vip", "lost"):
             seg = "new"
         db.add(Client(tenant_id=user.tenant_id, name=name,
+                      first_name=(row.get("first_name") or "").strip() or None,
+                      last_name=(row.get("last_name") or "").strip() or None,
                       phone=(row.get("phone") or "").strip() or None,
                       email=(row.get("email") or "").strip() or None,
                       segment=seg, source="import"))

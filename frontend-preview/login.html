@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Вхід</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="assets/api.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text);
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:16px; }
+  .card { background:var(--tg-card); border-radius:16px; padding:26px; width:100%; max-width:380px;
+    text-align:center; box-shadow:0 4px 20px rgba(0,0,0,.15); }
+  .card img { width:96px; height:96px; border-radius:50%; object-fit:cover; object-position:center 12%;
+    background:#0e1621; margin-bottom:12px; }
+  .card h2 { font-size:19px; margin-bottom:4px; }
+  .card p { font-size:13px; color:var(--tg-hint); margin-bottom:16px; }
+  .field { width:100%; border:1px solid var(--tg-sep); border-radius:10px; background:var(--tg-bg);
+    color:var(--tg-text); font-size:15px; padding:12px 14px; margin-bottom:10px; outline:none; }
+  .tg-btn { width:100%; border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
+    font-size:15px; font-weight:700; padding:13px; cursor:pointer;
+    transition:transform .15s ease, opacity .15s ease; }
+  .tg-btn:active { transform:scale(.97); }
+  .err { color:#e53935; font-size:13px; min-height:20px; margin-top:8px; }
+  body.leleka { --tg-bg:#faf6ef; --tg-card:#fffdf8; --tg-text:#3b2f2f; --tg-hint:#a08c7a;
+    --tg-link:#c96f2f; --tg-btn:#c96f2f; --tg-sep:#eadfce; --tg-header:#3b2f2f; }
+</style>
+</head>
+<body>
+<script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
+<div class="card">
+  <img src="assets/leleka-mascot.png" alt="Лелека">
+  <h2>Вхід у Leleka CRM</h2>
+  <p>Токен збережеться локально, дашборд підтягне живі дані</p>
+  <input class="field" id="email" type="email" placeholder="email" value="owner@demo.ua">
+  <input class="field" id="pass" type="password" placeholder="пароль" value="demo1234">
+  <button class="tg-btn" onclick="doLogin()">Увійти</button>
+  <div class="err" id="err"></div>
+</div>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  async function doLogin(){
+    document.getElementById('err').textContent = '';
+    try {
+      await apiLogin(document.getElementById('email').value.trim(),
+                     document.getElementById('pass').value);
+      location = 'dashboard.html';
+    } catch(e) { document.getElementById('err').textContent = 'Не вийшло: ' + e.message + ' (API запущено?)'; }
+  }
+</script>
+</body>
+</html>
