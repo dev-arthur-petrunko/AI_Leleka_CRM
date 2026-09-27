@@ -44,9 +44,17 @@ def list_clients(tenant_id: UUID = Depends(get_current_tenant),
     query = db.query(Client).filter(
         Client.tenant_id == tenant_id, Client.deleted_at.is_(None))
     if q:
-        like = f"%{q}%"
-        query = query.filter(or_(Client.name.ilike(like), Client.phone.ilike(like),
-                                 Client.email.ilike(like)))
+        # Postgres у C-локалі не згортає регістр кирилиці в lower()/ILIKE,
+        # тому генеруємо варіанти регістру в Python і шукаємо чутливим LIKE.
+        variants = {q, q.lower(), q.upper(), q.capitalize()}
+        conds = []
+        for v in variants:
+            esc = v.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            like = f"%{esc}%"
+            conds.append(or_(Client.name.like(like, escape="\\"),
+                             Client.phone.like(like, escape="\\"),
+                             Client.email.like(like, escape="\\")))
+        query = query.filter(or_(*conds))
     if segment:
         query = query.filter(Client.segment == segment)
     total = query.count()
