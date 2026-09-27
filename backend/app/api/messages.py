@@ -31,6 +31,38 @@ class MessageIn(BaseModel):
     subject: str | None = None  # тільки для email; ігнорується для telegram/viber
 
 
+def _load_client_deal(db: Session, user: User, client_id: str,
+                      deal_id: str | None):
+    client = db.query(Client).filter(
+        Client.id == client_id, Client.tenant_id == user.tenant_id).first()
+    if not client:
+        raise HTTPException(404, "Клієнта не знайдено")
+    deal = None
+    if deal_id:
+        deal = db.query(Deal).filter(
+            Deal.id == deal_id, Deal.tenant_id == user.tenant_id).first()
+        if not deal:
+            raise HTTPException(404, "Угоду не знайдено")
+    return client, deal
+
+
+@router.get("/{client_id}/message-preview")
+def message_preview(client_id: str, channel: str, deal_id: str | None = None,
+                    user: User = Depends(_writer), db: Session = Depends(get_db)):
+    """AI-приклад листа ДО відправки: бачить замовлення (товар, номер), імʼя — ні."""
+    if channel not in SUPPORTED_CHANNELS:
+        raise HTTPException(400, f"Канал має бути одним із: {', '.join(SUPPORTED_CHANNELS)}")
+    client, deal = _load_client_deal(db, user, client_id, deal_id)
+    composed = compose_message(client, deal, channel)
+    target = getattr(client, TARGET_FIELD[channel])
+    return {"text": composed["text"], "ai_used": composed["ai_used"],
+            "missing_data": composed["missing"],
+            "can_send": bool(target),
+            "send_hint": None if target else (
+                f"У клієнта немає {TARGET_FIELD[channel]} — "
+                "спочатку додайте контакт (напр. клієнт пише боту першим)")}
+
+
 @router.post("/{client_id}/message")
 def send_message(client_id: str, data: MessageIn,
                  user: User = Depends(_writer), db: Session = Depends(get_db)):

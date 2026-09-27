@@ -6,6 +6,7 @@
 <title>AI Leleka CRM — Картка клієнта</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%237dd3fc'/%3E%3Cstop offset='1' stop-color='%230369a1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='32' fill='url(%23g)'/%3E%3Ccircle cx='50' cy='12' r='6' fill='%23fde68a'/%3E%3Cpath d='M30,37 Q24,20 36,10 Q38,22 42,34 Q36,38 30,37 Z' fill='white'/%3E%3Cpath d='M36,10 Q37,20 40,30 L36,31 Q34,21 33,12 Z' fill='%230f172a'/%3E%3Cellipse cx='29' cy='41' rx='12' ry='7' fill='white'/%3E%3Cpath d='M39,39 C43,33 44,27 46,21' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='46' cy='19' r='4.2' fill='white'/%3E%3Cpolygon points='50,17 62,20.5 50,24' fill='%23f97316'/%3E%3Cpath d='M17,45 L4,51 M19,47 L7,54' stroke='%23f97316' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="assets/api.js"></script>
 <style>
   :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
     --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
@@ -45,6 +46,14 @@
     opacity:0;transition:all .25s ease;z-index:50;pointer-events:none;max-width:90vw}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .tabbar{position:fixed;bottom:0;left:0;right:0;background:var(--tg-card);border-top:1px solid var(--tg-sep);display:flex}
+  .chips{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+  .chip{border:1px solid var(--tg-sep);color:var(--tg-hint);border-radius:20px;padding:6px 14px;
+    font-size:13px;cursor:pointer;transition:all .15s ease}
+  .chip.active{background:var(--tg-btn);color:var(--tg-btn-text);border-color:var(--tg-btn)}
+  .field{width:100%;border:1px solid var(--tg-sep);border-radius:10px;background:var(--tg-bg);
+    color:var(--tg-text);font-size:14px;padding:10px 12px;margin-bottom:10px;outline:none;font-family:inherit}
+  textarea.field{resize:vertical;min-height:88px;line-height:1.5}
+  .msg-status{font-size:12.5px;color:var(--tg-hint);margin-bottom:4px;min-height:18px}
   .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
   .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
   body.leleka { --tg-bg:#faf6ef; --tg-card:#fffdf8; --tg-text:#3b2f2f; --tg-hint:#a08c7a;
@@ -91,6 +100,20 @@
       </div>
     </div>
   </div>
+  <div class="card"><h2>✉️ Написати клієнту — AI бачить замовлення</h2>
+    <div class="chips" id="mChips">
+      <span class="chip active" data-ch="email">📧 Email</span>
+      <span class="chip" data-ch="telegram">✈️ Telegram</span>
+      <span class="chip" data-ch="viber">📞 Viber</span>
+    </div>
+    <select class="field" id="mDeal"></select>
+    <textarea class="field" id="mText" rows="4" placeholder="Тут зʼявиться AI-текст листа з назвою товару й номером замовлення…"></textarea>
+    <div class="msg-status" id="mStatus">Оберіть канал і угоду, тисніть «AI-приклад».</div>
+    <div class="btns" style="margin:10px 0 0">
+      <button class="tg-btn" onclick="aiPreview()">✨ AI-приклад</button>
+      <button class="tg-btn" onclick="sendMsg()">Надіслати</button>
+    </div>
+  </div>
 </main>
 <nav class="tabbar">
   <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
@@ -103,6 +126,74 @@
 function toast(msg,ms){let el=document.querySelector('.toast');
 if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
 el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
-el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}</script>
+el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}
+let mChannel='email', realClientId=null;
+const MOCK_DEALS=[
+  {id:null, label:'Без угоди (загальне вітання)', prod:null, order:null},
+  {id:null, label:'#412 · 45 000 ₴', prod:'Ноутбук', order:'412'},
+  {id:null, label:'#380 · 32 000 ₴', prod:'Смартфон', order:'380'},
+];
+document.querySelectorAll('#mChips .chip').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('#mChips .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); mChannel=c.dataset.ch;});
+function fillDeals(list){
+  const s=document.getElementById('mDeal'); s.innerHTML='';
+  list.forEach((d,i)=>{const o=document.createElement('option');o.value=i;o.textContent=d.label;s.appendChild(o);});
+  s._data=list;
+}
+function mockLetter(){
+  const d=document.getElementById('mDeal')._data[document.getElementById('mDeal').value]||MOCK_DEALS[0];
+  const prod=d.prod?` (${d.prod})`:''; const ord=d.order?`, номер ${d.order}`:'';
+  const base=`Доброго дня, Олено!\n\nДякуємо за замовлення${prod}${ord}!`;
+  return { text: mChannel==='email'
+    ? base+`\nЯкщо виникнуть питання — просто дайте знати, ми завжди на звʼязку.\n\nЗ теплом,\nваша команда`
+    : base+(mChannel==='telegram'?' 🙌 Якщо будуть питання — пишіть сюди.':' Ми на звʼязку, якщо що.'),
+    deal:d };
+}
+async function initMsg(){
+  fillDeals(MOCK_DEALS);
+  try {
+    const list=await api('/clients?q='+encodeURIComponent('Олена')+'&limit=5');
+    if(list&&list.items&&list.items.length){
+      realClientId=list.items[0].id;
+      const dl=await api('/deals?limit=200');
+      const mine=(dl&&dl.items?dl.items:[]).filter(x=>x.client_id===realClientId);
+      if(mine.length) fillDeals([{id:null,label:'Без угоди',prod:null,order:null}].concat(
+        mine.map(x=>({id:x.id,label:(x.order_number||x.title)+' · '+Math.round(x.amount||0)+' ₴',
+                       prod:x.product_summary||null,order:x.order_number||null}))));
+      document.getElementById('mStatus').textContent='🔗 Клієнта знайдено в API — листи підуть по-справжньому.';
+    }
+  } catch(e){}
+}
+async function aiPreview(){
+  const st=document.getElementById('mStatus');
+  if(realClientId){
+    const d=document.getElementById('mDeal')._data[document.getElementById('mDeal').value]||{};
+    const q='/clients/'+realClientId+'/message-preview?channel='+mChannel+(d.id?'&deal_id='+d.id:'');
+    const r=await api(q);
+    if(r){document.getElementById('mText').value=r.text;
+      st.textContent=(r.ai_used?'🤖 AI-текст':'📝 Локальний шаблон (нема AI-ключа)')+
+        (r.can_send?'':' · ⚠️ '+(r.send_hint||'нема контакту для каналу'));
+      return;}
+  }
+  const m=mockLetter();
+  document.getElementById('mText').value=m.text;
+  st.textContent='📝 Демо-приклад (без API — текст з локального шаблону). Увійдіть через 🔑 на дашборді.';
+}
+async function sendMsg(){
+  if(!realClientId){toast('Демо-режим: увійдіть через 🔑 — і лист піде реально');return;}
+  const d=document.getElementById('mDeal')._data[document.getElementById('mDeal').value]||{};
+  const text=document.getElementById('mText').value;
+  const r=await api('/clients/'+realClientId+'/message',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({channel:mChannel,deal_id:d.id||null})});
+  if(!r){toast('Не вдалося: перевірте канал/контакт (можливо 422)');return;}
+  if(text&&!document.getElementById('mText').dataset.sent){
+    document.getElementById('mText').dataset.sent='1';
+  }
+  toast(r.stub?'📤 Надіслано (stub — підключіть '+mChannel+' в інтеграціях)':'✅ Надіслано через '+mChannel);
+  document.getElementById('mStatus').textContent=(r.ai_used?'🤖 AI':'📝 Шаблон')+' · записано в interactions.';
+}
+initMsg();</script>
 </body>
 </html>
