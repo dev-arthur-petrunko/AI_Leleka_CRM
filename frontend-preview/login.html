@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>AI Leleka CRM — Вхід</title>
+<title>AI Leleka CRM — Вхід і реєстрація</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="assets/api.js"></script>
 <style>
@@ -14,12 +14,17 @@
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text);
     display:flex; align-items:center; justify-content:center; min-height:100vh; padding:16px; }
-  .card { background:var(--tg-card); border-radius:16px; padding:26px; width:100%; max-width:380px;
+  .card { background:var(--tg-card); border-radius:16px; padding:26px; width:100%; max-width:400px;
     text-align:center; box-shadow:0 4px 20px rgba(0,0,0,.15); }
   .card img { width:96px; height:96px; border-radius:50%; object-fit:cover; object-position:center 12%;
     background:#0e1621; margin-bottom:12px; }
   .card h2 { font-size:19px; margin-bottom:4px; }
   .card p { font-size:13px; color:var(--tg-hint); margin-bottom:16px; }
+  .tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .tab2 { flex:1; border:1px solid var(--tg-sep); background:transparent; color:var(--tg-hint);
+    border-radius:10px; padding:10px; font-size:14px; font-weight:600; cursor:pointer;
+    transition:all .15s ease; }
+  .tab2.active { background:var(--tg-btn); color:var(--tg-btn-text); border-color:var(--tg-btn); }
   .field { width:100%; border:1px solid var(--tg-sep); border-radius:10px; background:var(--tg-bg);
     color:var(--tg-text); font-size:15px; padding:12px 14px; margin-bottom:10px; outline:none; }
   .tg-btn { width:100%; border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
@@ -27,6 +32,7 @@
     transition:transform .15s ease, opacity .15s ease; }
   .tg-btn:active { transform:scale(.97); }
   .err { color:#e53935; font-size:13px; min-height:20px; margin-top:8px; }
+  .hint { font-size:12px; color:var(--tg-hint); margin-top:10px; line-height:1.5; }
   body.leleka { --tg-bg:#faf6ef; --tg-card:#fffdf8; --tg-text:#3b2f2f; --tg-hint:#a08c7a;
     --tg-link:#c96f2f; --tg-btn:#c96f2f; --tg-sep:#eadfce; --tg-header:#3b2f2f; }
 </style>
@@ -35,15 +41,48 @@
 <script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
 <div class="card">
   <img src="assets/leleka-mascot.png" alt="Лелека">
-  <h2>Вхід у Leleka CRM</h2>
-  <p>Токен збережеться локально, дашборд підтягне живі дані</p>
-  <input class="field" id="email" type="email" placeholder="email" value="owner@demo.ua">
-  <input class="field" id="pass" type="password" placeholder="пароль" value="demo1234">
-  <button class="tg-btn" onclick="doLogin()">Увійти</button>
+  <h2 id="title">Вхід у Leleka CRM</h2>
+  <p id="sub">Токен збережеться локально, дашборд підтягне живі дані</p>
+  <div class="tabs">
+    <button class="tab2 active" id="tabLogin" onclick="showTab('login')">Вхід</button>
+    <button class="tab2" id="tabReg" onclick="showTab('register')">Реєстрація</button>
+  </div>
+  <div id="paneLogin">
+    <input class="field" id="email" type="email" placeholder="email" value="owner@demo.ua">
+    <input class="field" id="pass" type="password" placeholder="пароль" value="demo1234">
+    <button class="tg-btn" onclick="doLogin()">Увійти</button>
+  </div>
+  <div id="paneReg" hidden>
+    <input class="field" id="rCompany" placeholder="Назва компанії">
+    <input class="field" id="rSlug" placeholder="slug латиницею (напр. moya-firma)">
+    <input class="field" id="rName" placeholder="Ваше імʼя">
+    <input class="field" id="rEmail" type="email" placeholder="email">
+    <input class="field" id="rPass" type="password" placeholder="пароль (мін. 6 символів)">
+    <button class="tg-btn" onclick="doRegister()">Створити компанію — безкоштовно</button>
+    <div class="hint" id="planHint">Тариф Free — перший користувач безкоштовно назавжди.</div>
+  </div>
   <div class="err" id="err"></div>
 </div>
 <script>
   (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  const qs = new URLSearchParams(location.search);
+  const wantPlan = (qs.get('plan') || 'free').toLowerCase();
+  function showTab(which){
+    const isReg = which === 'register';
+    document.getElementById('paneLogin').hidden = isReg;
+    document.getElementById('paneReg').hidden = !isReg;
+    document.getElementById('tabLogin').classList.toggle('active', !isReg);
+    document.getElementById('tabReg').classList.toggle('active', isReg);
+    document.getElementById('title').textContent = isReg ? 'Реєстрація компанії' : 'Вхід у Leleka CRM';
+    document.getElementById('sub').textContent = isReg
+      ? 'Хвилина — і ваш кабінет готовий'
+      : 'Токен збережеться локально, дашборд підтягне живі дані';
+    if (isReg) {
+      const labels = { free: 'Free — безкоштовно назавжди.', pro: 'Pro — після реєстрації запропонуємо оплату 350 ₴/міс.', team: 'Team — після реєстрації запропонуємо оплату 300 ₴/міс.' };
+      document.getElementById('planHint').textContent = 'Обраний тариф: ' + (labels[wantPlan] || labels.free);
+    }
+  }
+  if (qs.get('mode') === 'register' || wantPlan !== 'free') showTab('register');
   async function doLogin(){
     document.getElementById('err').textContent = '';
     try {
@@ -51,6 +90,29 @@
                      document.getElementById('pass').value);
       location = 'dashboard.html';
     } catch(e) { document.getElementById('err').textContent = 'Не вийшло: ' + e.message + ' (API запущено?)'; }
+  }
+  async function doRegister(){
+    const err = document.getElementById('err'); err.textContent = '';
+    const body = {
+      tenant_name: document.getElementById('rCompany').value.trim(),
+      slug: document.getElementById('rSlug').value.trim().toLowerCase(),
+      owner_name: document.getElementById('rName').value.trim(),
+      email: document.getElementById('rEmail').value.trim(),
+      password: document.getElementById('rPass').value,
+    };
+    if (!body.tenant_name || !body.slug || !body.owner_name || !body.email || body.password.length < 6) {
+      err.textContent = 'Заповніть усі поля (пароль мін. 6 символів, slug — латиницею).';
+      return;
+    }
+    try {
+      const r = await fetch(API_BASE + '/auth/register', { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { const t = await r.text(); throw new Error(t.slice(0, 160)); }
+      const j = await r.json();
+      localStorage.setItem('leleka-token', j.access_token);
+      // Після реєстрації: платний тариф → одразу на сторінку оплати (тариф), free → в кабінет
+      location = (wantPlan !== 'free') ? 'billing.html?plan=' + wantPlan : 'dashboard.html';
+    } catch(e) { err.textContent = 'Не вийшло: ' + e.message; }
   }
 </script>
 </body>

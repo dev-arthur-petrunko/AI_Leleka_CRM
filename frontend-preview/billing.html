@@ -78,6 +78,15 @@
     document.querySelectorAll('.plan').forEach(x=>x.classList.remove('hot'));
     event.target.closest('.plan').classList.add('hot');
     toast('У проді: POST /billing/upgrade → '+p+' (тільки owner, далі — оплата LiqPay/Mono)');}
+  // Після реєстрації з тарифного лендінгу: підсвітити обраний і запропонувати оплату
+  (function(){
+    const want = new URLSearchParams(location.search).get('plan');
+    if (!want) return;
+    const name = want.charAt(0).toUpperCase() + want.slice(1);
+    const cards = document.querySelectorAll('.plan');
+    cards.forEach(x => { if (x.textContent.includes(name)) x.classList.add('hot'); else x.classList.remove('hot'); });
+    if (want !== 'free') toast('🎉 Компанію створено! Лишилось оплатити тариф ' + name + ' — тисніть «Обрати»');
+  })();
 </script>
 </body>
 </html>
