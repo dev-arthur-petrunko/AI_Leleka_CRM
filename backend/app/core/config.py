@@ -13,8 +13,10 @@ class Settings(BaseSettings):
     CREDENTIALS_KEY: str = ""
 
     REDIS_URL: str = "redis://localhost:6379/0"
-    # Домени фронту через кому: WebApp, localhost, прод-домен
-    FRONTEND_ORIGINS: str = "http://localhost:3000,http://localhost:5173,https://web.telegram.org"
+    # Домени фронту через кому: WebApp, localhost, прод-домен.
+    # :8080 — локальне превʼю (python -m http.server у frontend-preview/):
+    # file:// має origin null і ріжеться браузером, тому превʼю відкриваємо по http.
+    FRONTEND_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:8080,http://127.0.0.1:8080,https://web.telegram.org"
 
     # Ключі ПЛАТФОРМИ (власника сервісу) для прийому оплати тарифів.
     # Без них платний апгрейд повертає 409 (діра «безкоштовний Team» закрита).
