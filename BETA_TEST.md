@@ -5,7 +5,7 @@
 docker compose up --build
 python -m app.workers.demo_seed --slug beta1
 ```
-Логін: `owner@demo.ua / demo1234`, docs: `http://localhost:8000/docs`
+Логін: `owner@demo.ua / 123456789`, docs: `http://localhost:8000/docs`
 
 ## 2. Сценарії для 3-5 реальних ФОПів (7-14 днів)
 1. **Новий лід**: POST /clients → перевірити автораунд-менеджера + automation_logs

@@ -22,11 +22,11 @@ def seed(slug: str = "demo"):
             db.flush()
         if not db.query(User).filter(User.tenant_id == tenant.id).first():
             db.add(User(tenant_id=tenant.id, email="owner@demo.ua",
-                        password_hash=hash_password("demo1234"),
+                            password_hash=hash_password("123456789"),
                         full_name="Власник", role="owner"))
             for i in range(2):
                 db.add(User(tenant_id=tenant.id, email=f"manager{i+1}@demo.ua",
-                            password_hash=hash_password("demo1234"),
+                        password_hash=hash_password("123456789"),
                             full_name=f"Менеджер {i+1}", role="manager"))
             db.flush()
         names = ["Олена", "Тарас", "Ірина", "Богдан", "Софія",
@@ -52,7 +52,7 @@ def seed(slug: str = "demo"):
             db.add(AutomationRule(tenant_id=tenant.id, name="Новий лід -> менеджер",
                                   trigger_type="new_lead", action_type="assign_manager"))
         db.commit()
-        return {"ok": True, "slug": slug, "login": "owner@demo.ua / demo1234"}
+        return {"ok": True, "slug": slug, "login": "owner@demo.ua / 123456789"}
     finally:
         db.close()
 
