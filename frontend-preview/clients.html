@@ -68,13 +68,13 @@
     <span class="chip" data-s="lost">lost</span>
   </div>
   <div class="card" id="list">
-    <div class="row" data-seg="vip" data-href="client.html"><div class="ava" style="background:#f2994a">О</div><div>Олена<div class="meta">+380970000001 · form · Менеджер 1</div></div><span class="seg vip">vip</span></div>
-    <div class="row" data-seg="regular"><div class="ava" style="background:#3390ec">Т</div><div>Тарас<div class="meta">+380970000002 · prom · Менеджер 2</div></div><span class="seg regular">regular</span></div>
-    <div class="row" data-seg="new"><div class="ava" style="background:#7f91a4">І</div><div>Ірина<div class="meta">+380970000003 · manual · —</div></div><span class="seg new">new</span></div>
-    <div class="row" data-seg="regular"><div class="ava" style="background:#31b545">Б</div><div>Богдан<div class="meta">+380970000004 · rozetka · Менеджер 1</div></div><span class="seg regular">regular</span></div>
-    <div class="row" data-seg="vip"><div class="ava" style="background:#e53935">С</div><div>Софія<div class="meta">+380970000005 · form · Менеджер 2</div></div><span class="seg vip">vip</span></div>
-    <div class="row" data-seg="new"><div class="ava" style="background:#9c27b0">М</div><div>Марія<div class="meta">+380970000007 · prom · —</div></div><span class="seg new">new</span></div>
-    <div class="row" data-seg="lost"><div class="ava" style="background:#616161">П</div><div>Петро<div class="meta">+380970000008 · manual · мовчить 34 дні</div></div><span class="seg lost">lost</span></div>
+    <div class="row" data-seg="vip" data-href="client.html?name=Олена&phone=%2B380970000001&seg=vip"><div class="ava" style="background:#f2994a">О</div><div>Олена<div class="meta">+380970000001 · form · Менеджер 1</div></div><span class="seg vip">vip</span></div>
+    <div class="row" data-seg="regular" data-href="client.html?name=Тарас&phone=%2B380970000002&seg=regular"><div class="ava" style="background:#3390ec">Т</div><div>Тарас<div class="meta">+380970000002 · prom · Менеджер 2</div></div><span class="seg regular">regular</span></div>
+    <div class="row" data-seg="new" data-href="client.html?name=Ірина&phone=%2B380970000003&seg=new"><div class="ava" style="background:#7f91a4">І</div><div>Ірина<div class="meta">+380970000003 · manual · —</div></div><span class="seg new">new</span></div>
+    <div class="row" data-seg="regular" data-href="client.html?name=Богдан&phone=%2B380970000004&seg=regular"><div class="ava" style="background:#31b545">Б</div><div>Богдан<div class="meta">+380970000004 · rozetka · Менеджер 1</div></div><span class="seg regular">regular</span></div>
+    <div class="row" data-seg="vip" data-href="client.html?name=Софія&phone=%2B380970000005&seg=vip"><div class="ava" style="background:#e53935">С</div><div>Софія<div class="meta">+380970000005 · form · Менеджер 2</div></div><span class="seg vip">vip</span></div>
+    <div class="row" data-seg="new" data-href="client.html?name=Марія&phone=%2B380970000007&seg=new"><div class="ava" style="background:#9c27b0">М</div><div>Марія<div class="meta">+380970000007 · prom · —</div></div><span class="seg new">new</span></div>
+    <div class="row" data-seg="lost" data-href="client.html?name=Петро&phone=%2B380970000008&seg=lost"><div class="ava" style="background:#616161">П</div><div>Петро<div class="meta">+380970000008 · manual · мовчить 34 дні</div></div><span class="seg lost">lost</span></div>
     <div id="empty" class="empty" hidden>🔍 Нічого не знайдено<br><small>Змініть пошук або <u onclick="toast('У проді: POST /clients')">додайте першого клієнта</u></small></div>
   </div>
   <p style="color:var(--tg-hint);font-size:12px;margin-top:12px">Клік по клієнту → у проді картка-досьє (історія угод, задачі, audit). Видалення — soft-delete + запис в audit_log.</p>

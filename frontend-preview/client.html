@@ -108,9 +108,9 @@
 <script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
 <header><button onclick="history.length>1?history.back():location='clients.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><img src="assets/leleka-mascot.png" alt="Лелека" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:center 12%;background:#0e1621"><div>Картка клієнта</div></header>
 <main>
-  <div class="profile"><div class="ava">О</div>
-    <div><div style="font-size:19px;font-weight:700">Олена <span class="seg">vip</span></div>
-    <div class="sub">+380970000001 · form · Менеджер 1 · згода GDPR ✓</div></div>
+  <div class="profile"><div class="ava" id="pAva">О</div>
+    <div><div style="font-size:19px;font-weight:700"><span id="pName">Олена</span> <span class="seg" id="pSeg">vip</span></div>
+    <div class="sub" id="pSub">+380970000001 · form · Менеджер 1 · згода GDPR ✓</div></div>
   </div>
   <div class="btns"><button class="tg-btn" onclick="toast('У проді: дзвінок / SMS + запис у interactions')">📞 Зателефонувати</button>
     <button class="tg-btn" onclick="location='deals.html'">+ Угода</button>
@@ -176,6 +176,14 @@ function toast(msg,ms){let el=document.querySelector('.toast');
 if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
 el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
 el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}
+// Досьє персоналізується з ?name=&phone=&seg= (рядки clients.html)
+(function(){const q=new URLSearchParams(location.search);
+const name=q.get('name'); if(!name) return;
+document.getElementById('pName').textContent=name;
+document.getElementById('pAva').textContent=name.trim().charAt(0).toUpperCase();
+const seg=q.get('seg'); if(seg) document.getElementById('pSeg').textContent=seg;
+const phone=q.get('phone');
+document.getElementById('pSub').textContent=(phone||'+380970000001')+' · form · Менеджер 1 · згода GDPR ✓';})();
 let mChannel='email', realClientId=null, realDeals=[];
 async function initMsg(){
   try {
