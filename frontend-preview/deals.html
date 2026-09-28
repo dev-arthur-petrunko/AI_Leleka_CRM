@@ -23,7 +23,7 @@
   header h1 { font-size:20px; } header h1 span { color:var(--tg-link); }
   main { padding:24px; max-width:1400px; margin:0 auto; }
   .board { display:grid; grid-template-columns:repeat(5,minmax(220px,1fr)); gap:12px; overflow-x:auto; }
-  .col { background:color-mix(in srgb, var(--tg-card) 92%, transparent); border-radius:12px; padding:10px; min-height:200px; }
+  .col { background:var(--tg-card); border-radius:12px; padding:10px; min-height:200px; }
   .col h3 { font-size:13px; text-transform:uppercase; color:var(--tg-hint); padding:4px 6px 10px; }
   .col h3 .sum { display:block; color:var(--tg-text); font-size:14px; }
   .col.dragover { outline:2px dashed var(--tg-link); }
@@ -37,6 +37,20 @@
   .empty-hint { font-size:12.5px; color:var(--tg-hint); text-align:center; padding:14px 6px;
     border:1.5px dashed var(--tg-sep); border-radius:10px; }
   .col.flash { outline:2px solid var(--tg-link); }
+  /* Кожна стадія — свій колір: смуга + заголовок видно завжди (простий hex),
+     тонування фону — прогресивне (color-mix, сучасні браузери) */
+  .col { border-top:4px solid var(--st, var(--tg-sep)); }
+  .col h3 { color:var(--st, var(--tg-hint)); }
+  .col[data-stage="new"]         { --st:#5B7C99; }
+  .col[data-stage="contacted"]   { --st:#2C8FB8; }
+  .col[data-stage="negotiation"] { --st:#D9822B; }
+  .col[data-stage="won"]         { --st:#3E7A4B; }
+  .col[data-stage="lost"]        { --st:#B04A4A; }
+  @supports (background:color-mix(in srgb, red 10%, white)) {
+    .col { background:linear-gradient(180deg,
+      color-mix(in srgb, var(--st, var(--tg-sep)) 13%, var(--tg-card)),
+      color-mix(in srgb, var(--st, var(--tg-sep)) 4%, var(--tg-card)) 60%); }
+  }
   .msg-btn { border:none; background:color-mix(in srgb, var(--tg-link) 10%, transparent); color:var(--tg-link);
     width:24px; height:24px; border-radius:8px; font-size:12px; cursor:pointer; flex:none;
     display:inline-flex; align-items:center; justify-content:center; transition:transform .15s ease, background .15s ease; }
