@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <title>AI Leleka CRM — Картка клієнта</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%237dd3fc'/%3E%3Cstop offset='1' stop-color='%230369a1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='32' fill='url(%23g)'/%3E%3Ccircle cx='50' cy='12' r='6' fill='%23fde68a'/%3E%3Cpath d='M30,37 Q24,20 36,10 Q38,22 42,34 Q36,38 30,37 Z' fill='white'/%3E%3Cpath d='M36,10 Q37,20 40,30 L36,31 Q34,21 33,12 Z' fill='%230f172a'/%3E%3Cellipse cx='29' cy='41' rx='12' ry='7' fill='white'/%3E%3Cpath d='M39,39 C43,33 44,27 46,21' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='46' cy='19' r='4.2' fill='white'/%3E%3Cpolygon points='50,17 62,20.5 50,24' fill='%23f97316'/%3E%3Cpath d='M17,45 L4,51 M19,47 L7,54' stroke='%23f97316' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -56,8 +58,50 @@
   .msg-status{font-size:12.5px;color:var(--tg-hint);margin-bottom:4px;min-height:18px}
   .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
   .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
-  body.leleka { --tg-bg:#faf6ef; --tg-card:#fffdf8; --tg-text:#3b2f2f; --tg-hint:#a08c7a;
-    --tg-link:#c96f2f; --tg-btn:#c96f2f; --tg-sep:#eadfce; --tg-header:#3b2f2f; }
+  body.leleka { --tg-bg:#F7F2E9; --tg-card:#FFFDF9; --tg-text:#251A10; --tg-hint:#8A7860;
+    --tg-link:#BD5A2A; --tg-btn:#BD5A2A; --tg-sep:#E4D7C1; --tg-header:#251A10; }
+  body.leleka { font-family:'Manrope',-apple-system,sans-serif; }
+  body.leleka h1, body.leleka h2, body.leleka h3, body.leleka .kpi .num,
+  body.leleka .price, body.leleka .num, body.leleka .amt, body.leleka .badge {
+    font-family:'Unbounded',system-ui,sans-serif; }
+
+  /* --- Кольорові акценти по картках --- */
+  :root, body.leleka { --teal:#2C5A5B; --amber:#B5791E; --green:#3E7A4B; --rose:#A8455C; }
+  .card { border-top:4px solid transparent; }
+  .card.c-teal  { border-top-color:var(--teal); }
+  .card.c-amber { border-top-color:var(--amber); }
+  .card.c-green { border-top-color:var(--green); }
+  .card.c-rose  { border-top-color:var(--rose); }
+  .card.c-ink   { border-top-color:var(--tg-header); }
+  .card h2 { display:flex; align-items:center; gap:9px; }
+  .ico-badge { width:26px; height:26px; border-radius:8px; display:flex; align-items:center;
+    justify-content:center; font-size:13px; flex:none; color:#fff; }
+  .c-teal .ico-badge{background:var(--teal)} .c-amber .ico-badge{background:var(--amber)}
+  .c-green .ico-badge{background:var(--green)} .c-rose .ico-badge{background:var(--rose)}
+  .c-ink .ico-badge{background:var(--tg-header)}
+
+  /* --- Історія угод: багатший рядок замість голої таблиці --- */
+  .dh-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--tg-sep); }
+  .dh-row:last-child { border:none; }
+  .dh-main b { font-size:14.5px; } .dh-meta { font-size:12px; color:var(--tg-hint); margin-top:2px; }
+  .dh-amt { font-weight:800; font-size:14.5px; margin-left:auto; white-space:nowrap; }
+  .stg { font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:20px; color:#fff; white-space:nowrap; }
+  .stg.negotiation{background:#f2994a} .stg.won{background:var(--green)} .stg.lost{background:var(--tg-hint)}
+
+  /* --- Написати клієнту: модалка (той самий патерн, що на deals.html) --- */
+  .channels { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .chan-chip { border:1.5px solid var(--tg-sep); background:transparent; color:var(--tg-text);
+    padding:7px 13px; border-radius:20px; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s ease; }
+  .chan-chip.active { border-color:var(--tg-link); background:color-mix(in srgb, var(--tg-link) 12%, transparent); color:var(--tg-link); }
+  .chan-chip.disabled { opacity:.4; cursor:not-allowed; text-decoration:line-through; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end;
+    justify-content:center; z-index:40; opacity:0; pointer-events:none; transition:opacity .2s ease; }
+  .overlay.show { opacity:1; pointer-events:auto; }
+  .sheet { background:var(--tg-card); border-radius:16px 16px 0 0; padding:18px; width:100%; max-width:440px;
+    transform:translateY(30px); transition:transform .22s ease; }
+  .overlay.show .sheet { transform:translateY(0); }
+  .row-btns { display:flex; gap:10px; } .row-btns .tg-btn { flex:1; margin:0; }
+  .tg-btn.secondary { background:transparent; color:var(--tg-link); border:1px solid var(--tg-sep); }
 </style>
 </head>
 <body>
@@ -72,27 +116,34 @@
     <button class="tg-btn" onclick="location='deals.html'">+ Угода</button>
     <button class="tg-btn" onclick="location='tasks.html'">+ Задача</button></div>
   <div class="grid">
-    <div class="card"><h2>Досьє</h2>
+    <div class="card c-teal"><h2><span class="ico-badge">👤</span>Досьє</h2>
       <div class="kv"><span>Телефон</span><b>+380970000001</b></div>
       <div class="kv"><span>Джерело</span><b>form</b></div>
       <div class="kv"><span>Угод всього</span><b>3 · 77 000 ₴</b></div>
       <div class="kv"><span>AI-скор (краща угода)</span><b style="color:#e53935">88 hot</b></div>
       <div class="kv"><span>Нотатки</span><b>Любить НП, післяплата</b></div>
     </div>
-    <div class="card"><h2>Історія угод</h2>
-      <table><tr><th>Угода</th><th>Сума</th><th>Стадія</th></tr>
-      <tr><td>#412</td><td>45 000 ₴</td><td>negotiation</td></tr>
-      <tr><td>#380</td><td>32 000 ₴</td><td>won ✓</td></tr>
-      <tr><td>#352</td><td>12 000 ₴</td><td>lost · ціна</td></tr></table>
+    <div class="card c-amber"><h2><span class="ico-badge">🧾</span>Історія угод</h2>
+      <div class="dh-row"><div class="dh-main"><b>#412</b> · Смарт-годинник<div class="dh-meta">A-412 · сьогодні</div></div><div class="dh-amt">45 000 ₴</div><span class="stg negotiation">negotiation</span></div>
+      <div class="dh-row"><div class="dh-main"><b>#380</b> · Фен Dyson<div class="dh-meta">A-380 · 3 тижні тому</div></div><div class="dh-amt">32 000 ₴</div><span class="stg won">won ✓</span></div>
+      <div class="dh-row"><div class="dh-main"><b>#352</b> · Кавоварка<div class="dh-meta">A-352 · 2 міс тому</div></div><div class="dh-amt">12 000 ₴</div><span class="stg lost">lost · ціна</span></div>
     </div>
   </div>
   <div class="grid">
-    <div class="card"><h2>Задачі</h2>
+    <div class="card c-rose" data-email="olena@example.com" data-telegram="456789" data-viber="567890"
+        data-product="Смарт-годинник" data-order="A-412" id="msgCard">
+      <h2><span class="ico-badge">✉</span>Написати клієнту</h2>
+      <p style="font-size:13px;color:var(--tg-hint);margin-bottom:10px">AI складе текст під останню угоду — оберіть канал і надішліть.</p>
+      <button class="tg-btn" style="width:100%" onclick="openMsg()">Скласти лист</button>
+    </div>
+    <div class="card c-green"><h2><span class="ico-badge">✅</span>Задачі</h2>
       <div class="task"><input type="checkbox" checked onclick="this.parentNode.classList.toggle('done')"> <span>Надіслати рахунок (до пт)</span></div>
       <div class="task"><input type="checkbox" onclick="this.parentNode.classList.toggle('done')"> <span>Передзвонити по #412</span></div>
       <div class="task"><input type="checkbox" onclick="this.parentNode.classList.toggle('done')"> <span>Запит на відгук</span></div>
     </div>
-    <div class="card"><h2>Журнал (audit_log)</h2>
+  </div>
+  <div class="grid">
+    <div class="card c-ink" style="grid-column:1/-1"><h2><span class="ico-badge">📜</span>Журнал (audit_log)</h2>
       <div class="tl">
         <div>Створено картку <small>· owner · 12.09</small></div>
         <div>Угоду #412 переведено в negotiation <small>· Менеджер 1 · вчора</small></div>
@@ -100,21 +151,19 @@
       </div>
     </div>
   </div>
-  <div class="card"><h2>✉️ Написати клієнту — AI бачить замовлення</h2>
-    <div class="chips" id="mChips">
-      <span class="chip active" data-ch="email">📧 Email</span>
-      <span class="chip" data-ch="telegram">✈️ Telegram</span>
-      <span class="chip" data-ch="viber">📞 Viber</span>
-    </div>
-    <select class="field" id="mDeal"></select>
-    <textarea class="field" id="mText" rows="4" placeholder="Тут зʼявиться AI-текст листа з назвою товару й номером замовлення…"></textarea>
-    <div class="msg-status" id="mStatus">Оберіть канал і угоду, тисніть «AI-приклад».</div>
-    <div class="btns" style="margin:10px 0 0">
-      <button class="tg-btn" onclick="aiPreview()">✨ AI-приклад</button>
-      <button class="tg-btn" onclick="sendMsg()">Надіслати</button>
+</main>
+<div class="overlay" id="msgModal" onclick="if(event.target===this)closeMsgModal()">
+  <div class="sheet">
+    <h3 style="margin-bottom:12px">Написати Олені</h3>
+    <div class="channels" id="msgChannels"></div>
+    <textarea class="field" id="msgTextM" rows="5"></textarea>
+    <div class="msg-status" id="mStatusM"></div>
+    <div class="row-btns">
+      <button class="tg-btn secondary" onclick="closeMsgModal()">Скасувати</button>
+      <button class="tg-btn" onclick="sendMsgModal()">Надіслати</button>
     </div>
   </div>
-</main>
+</div>
 <nav class="tabbar">
   <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
   <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
@@ -127,72 +176,67 @@ function toast(msg,ms){let el=document.querySelector('.toast');
 if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
 el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
 el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}
-let mChannel='email', realClientId=null;
-const MOCK_DEALS=[
-  {id:null, label:'Без угоди (загальне вітання)', prod:null, order:null},
-  {id:null, label:'#412 · 45 000 ₴', prod:'Ноутбук', order:'412'},
-  {id:null, label:'#380 · 32 000 ₴', prod:'Смартфон', order:'380'},
-];
-document.querySelectorAll('#mChips .chip').forEach(c=>c.onclick=()=>{
-  document.querySelectorAll('#mChips .chip').forEach(x=>x.classList.remove('active'));
-  c.classList.add('active'); mChannel=c.dataset.ch;});
-function fillDeals(list){
-  const s=document.getElementById('mDeal'); s.innerHTML='';
-  list.forEach((d,i)=>{const o=document.createElement('option');o.value=i;o.textContent=d.label;s.appendChild(o);});
-  s._data=list;
-}
-function mockLetter(){
-  const d=document.getElementById('mDeal')._data[document.getElementById('mDeal').value]||MOCK_DEALS[0];
-  const prod=d.prod?` (${d.prod})`:''; const ord=d.order?`, номер ${d.order}`:'';
-  const base=`Доброго дня, Олено!\n\nДякуємо за замовлення${prod}${ord}!`;
-  return { text: mChannel==='email'
-    ? base+`\nЯкщо виникнуть питання — просто дайте знати, ми завжди на звʼязку.\n\nЗ теплом,\nваша команда`
-    : base+(mChannel==='telegram'?' 🙌 Якщо будуть питання — пишіть сюди.':' Ми на звʼязку, якщо що.'),
-    deal:d };
-}
+let mChannel='email', realClientId=null, realDeals=[];
 async function initMsg(){
-  fillDeals(MOCK_DEALS);
   try {
     const list=await api('/clients?q='+encodeURIComponent('Олена')+'&limit=5');
     if(list&&list.items&&list.items.length){
       realClientId=list.items[0].id;
       const dl=await api('/deals?limit=200');
-      const mine=(dl&&dl.items?dl.items:[]).filter(x=>x.client_id===realClientId);
-      if(mine.length) fillDeals([{id:null,label:'Без угоди',prod:null,order:null}].concat(
-        mine.map(x=>({id:x.id,label:(x.order_number||x.title)+' · '+Math.round(x.amount||0)+' ₴',
-                       prod:x.product_summary||null,order:x.order_number||null}))));
-      document.getElementById('mStatus').textContent='🔗 Клієнта знайдено в API — листи підуть по-справжньому.';
+      realDeals=(dl&&dl.items?dl.items:[]).filter(x=>x.client_id===realClientId);
     }
   } catch(e){}
 }
-async function aiPreview(){
-  const st=document.getElementById('mStatus');
-  if(realClientId){
-    const d=document.getElementById('mDeal')._data[document.getElementById('mDeal').value]||{};
-    const q='/clients/'+realClientId+'/message-preview?channel='+mChannel+(d.id?'&deal_id='+d.id:'');
-    const r=await api(q);
-    if(r){document.getElementById('mText').value=r.text;
-      st.textContent=(r.ai_used?'🤖 AI-текст':'📝 Локальний шаблон (нема AI-ключа)')+
-        (r.can_send?'':' · ⚠️ '+(r.send_hint||'нема контакту для каналу'));
-      return;}
-  }
-  const m=mockLetter();
-  document.getElementById('mText').value=m.text;
-  st.textContent='📝 Демо-приклад (без API — текст з локального шаблону). Увійдіть через 🔑 на дашборді.';
+function modalDeal(){
+  const c=document.getElementById('msgCard').dataset;
+  const x=realDeals.find(y=>y.stage==='negotiation')||realDeals[0];
+  return x
+    ? {id:x.id, product:x.product_summary||c.product||'', order:x.order_number||c.order||''}
+    : {id:null, product:c.product||'', order:c.order||''};
 }
-async function sendMsg(){
-  if(!realClientId){toast('Демо-режим: увійдіть через 🔑 — і лист піде реально');return;}
-  const d=document.getElementById('mDeal')._data[document.getElementById('mDeal').value]||{};
-  const text=document.getElementById('mText').value;
-  const r=await api('/clients/'+realClientId+'/message',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({channel:mChannel,deal_id:d.id||null})});
-  if(!r){toast('Не вдалося: перевірте канал/контакт (можливо 422)');return;}
-  if(text&&!document.getElementById('mText').dataset.sent){
-    document.getElementById('mText').dataset.sent='1';
+async function openMsg(){
+  const c=document.getElementById('msgCard').dataset;
+  const d=modalDeal();
+  msgCtx={dealId:d.id, product:d.product, order:d.order,
+    email:c.email||'', telegram:c.telegram||'', viber:c.viber||'', channel:null};
+  const wrap=document.getElementById('msgChannels'); wrap.innerHTML='';
+  let firstSet=false;
+  [['email','📧 Email',msgCtx.email],['telegram','✈️ Telegram',msgCtx.telegram],['viber','💬 Viber',msgCtx.viber]]
+    .forEach(([key,label,val])=>{
+      const chip=document.createElement('button'); chip.type='button';
+      chip.className='chan-chip'+(val?'':' disabled');
+      chip.textContent=val?label:label+' — недоступно'; chip.disabled=!val;
+      chip.title=val?'':'У клієнта немає цього контакту';
+      if(val&&!firstSet){chip.classList.add('active');msgCtx.channel=key;firstSet=true;}
+      chip.onclick=()=>{wrap.querySelectorAll('.chan-chip').forEach(x=>x.classList.remove('active'));
+        chip.classList.add('active');msgCtx.channel=key;};
+      wrap.appendChild(chip);
+    });
+  const p=msgCtx.product?` «${msgCtx.product}»`:'';
+  document.getElementById('msgTextM').value=
+    `Доброго дня, Олена! Дякуємо за замовлення${p}! Якщо будуть питання — ми на звʼязку.\n\nНомер замовлення: ${msgCtx.order}`;
+  document.getElementById('mStatusM').textContent='';
+  document.getElementById('msgModal').classList.add('show');
+  if(realClientId){
+    const r=await api('/clients/'+realClientId+'/message-preview?channel='+msgCtx.channel+(d.id?'&deal_id='+d.id:''));
+    if(r&&r.text){document.getElementById('msgTextM').value=r.text;
+      document.getElementById('mStatusM').textContent=r.ai_used?'🤖 AI-текст під угоду':'📝 Шаблон (нема AI-ключа)';}
   }
-  toast(r.stub?'📤 Надіслано (stub — підключіть '+mChannel+' в інтеграціях)':'✅ Надіслано через '+mChannel);
-  document.getElementById('mStatus').textContent=(r.ai_used?'🤖 AI':'📝 Шаблон')+' · записано в interactions.';
+}
+let msgCtx=null;
+function closeMsgModal(){document.getElementById('msgModal').classList.remove('show');}
+async function sendMsgModal(){
+  if(!msgCtx||!msgCtx.channel){toast('У клієнта немає жодного доступного каналу звʼязку');return;}
+  if(realClientId){
+    const r=await api('/clients/'+realClientId+'/message',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({channel:msgCtx.channel,deal_id:msgCtx.dealId||null})});
+    if(r){toast(r.stub?'📤 Надіслано (stub — підключіть '+msgCtx.channel+' в інтеграціях)':'✅ Надіслано через '+msgCtx.channel);
+      closeMsgModal();return;}
+    toast('Не вдалося (можливо 422 — нема контакту)');return;
+  }
+  toast('Демо-картка: у проді піде через '+msgCtx.channel+' (текст вище вже сформовано AI)');
+  closeMsgModal();
 }
 initMsg();</script>
 </body>
