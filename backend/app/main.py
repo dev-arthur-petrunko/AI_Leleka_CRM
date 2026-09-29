@@ -11,6 +11,7 @@ from app.api import (
     billing,
     clients,
     deals,
+    feedhub,
     integrations,
     messages,
     notifications,
@@ -38,6 +39,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(clients.router)
 app.include_router(deals.router)
+app.include_router(feedhub.router)
 app.include_router(tasks.router)
 app.include_router(webhooks.router)
 app.include_router(automations.router)

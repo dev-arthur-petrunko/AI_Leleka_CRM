@@ -295,6 +295,74 @@ CREATE TABLE billing_orders (
 CREATE INDEX idx_billing_tenant ON billing_orders(tenant_id, created_at DESC);
 
 -- ============================================================
+-- 13-16. FEED HUB — каталог товарів з XML-фідів
+-- products: обʼєднаний товар (1 рядок на SKU); product_offers: сировина джерел.
+-- feed_sources: URL + шифрована авторизація + розклад; feed_runs: журнал.
+-- ============================================================
+CREATE TABLE feed_sources (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  url           TEXT NOT NULL,
+  auth          JSONB NOT NULL DEFAULT '{}',   -- ENCRYPTED (Fernet), як integrations
+  format        TEXT NOT NULL DEFAULT 'auto',  -- auto/yml/google/facebook/custom
+  interval_minutes INT NOT NULL DEFAULT 60,
+  priority      INT NOT NULL DEFAULT 0,
+  settings      JSONB NOT NULL DEFAULT '{}',   -- markup_pct, rounding, exclude_*, field_map, etag
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+  last_run_at   TIMESTAMPTZ,
+  last_status   TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE feed_runs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  source_id     UUID NOT NULL REFERENCES feed_sources(id) ON DELETE CASCADE,
+  status        TEXT NOT NULL DEFAULT 'ok',    -- ok/error/skipped
+  added         INT NOT NULL DEFAULT 0,
+  updated       INT NOT NULL DEFAULT 0,
+  removed       INT NOT NULL DEFAULT 0,
+  errors        JSONB NOT NULL DEFAULT '{}',
+  started_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at   TIMESTAMPTZ
+);
+CREATE INDEX idx_feed_runs_source ON feed_runs(source_id, started_at DESC);
+
+CREATE TABLE products (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  sku           TEXT NOT NULL,                 -- ключ склейки: SKU/vendorCode/GTIN
+  name          TEXT NOT NULL,
+  price         NUMERIC(12,2) NOT NULL DEFAULT 0,
+  currency      TEXT NOT NULL DEFAULT 'UAH',
+  stock         INT NOT NULL DEFAULT 0,
+  brand         TEXT,
+  category      TEXT,
+  attrs         JSONB NOT NULL DEFAULT '{}',
+  sources       JSONB NOT NULL DEFAULT '{}',   -- {source_id: offer_id}
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (tenant_id, sku)
+);
+CREATE INDEX idx_products_tenant_sku ON products(tenant_id, sku);
+
+CREATE TABLE product_offers (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  product_id    UUID REFERENCES products(id) ON DELETE SET NULL,
+  source_id     UUID NOT NULL REFERENCES feed_sources(id) ON DELETE CASCADE,
+  external_id   TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  price         NUMERIC(12,2) NOT NULL DEFAULT 0,
+  currency      TEXT NOT NULL DEFAULT 'UAH',
+  stock         INT NOT NULL DEFAULT 0,
+  raw           JSONB NOT NULL DEFAULT '{}',
+  seen_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_offers_source ON product_offers(source_id, seen_at DESC);
+
+-- ============================================================
 -- ЗАМЕЧАНИЕ ДЛЯ FASTAPI:
 -- 1. Во всех SELECT/UPDATE/DELETE обязателен фильтр tenant_id.
 --    Удобно: dependency get_current_tenant() -> tenant_id из JWT.

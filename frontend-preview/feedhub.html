@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Feed Hub</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%233390ec'/%3E%3Ctext x='32' y='44' font-size='30' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'%3EF%3C/text%3E%3C/svg%3E">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="assets/api.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; display:flex;
+    justify-content:space-between; align-items:center; }
+  header h1 { font-size:20px; } header h1 span { color:var(--tg-link); }
+  main { padding:24px; max-width:1200px; margin:0 auto; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+  .kpi { background:var(--tg-card); border-radius:12px; padding:14px; }
+  .kpi .num { font-size:26px; font-weight:800; } .kpi .lbl { color:var(--tg-hint); font-size:12px; }
+  .card { background:var(--tg-card); border-radius:12px; padding:18px; margin-bottom:16px;
+    box-shadow:0 1px 3px rgba(0,0,0,.15); }
+  .card h2 { font-size:16px; margin-bottom:12px; }
+  .src { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--tg-sep); font-size:14.5px; }
+  .src:last-child { border:none; }
+  .dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; }
+  .dot.ok{background:#31b545} .dot.error{background:#e53935} .dot.skipped{background:#f2994a} .dot.never{background:#7f91a4}
+  .src .meta { font-size:12px; color:var(--tg-hint); }
+  .src .acts { margin-left:auto; display:flex; gap:6px; }
+  .mini { border:1px solid var(--tg-btn); color:var(--tg-link); background:transparent; border-radius:8px;
+    font-size:12px; font-weight:600; padding:6px 10px; cursor:pointer; white-space:nowrap;
+    transition:transform .15s ease; }
+  .mini:active { transform:scale(.95); }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th,td { text-align:left; padding:7px; border-bottom:1px solid var(--tg-sep); }
+  th { color:var(--tg-hint); font-size:11px; text-transform:uppercase; }
+  .st { font-size:11px; font-weight:700; border-radius:12px; padding:2px 9px; color:#fff; }
+  .st.ok{background:#31b545} .st.error{background:#e53935} .st.skipped{background:#f2994a}
+  .tg-btn { border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
+    font-size:14px; font-weight:600; padding:10px 18px; margin-bottom:16px; cursor:pointer;
+    transition:transform .15s ease, opacity .15s ease; }
+  .tg-btn:active { transform:scale(.97); }
+  .search { width:100%; border:none; border-radius:10px; background:var(--tg-bg); color:var(--tg-text);
+    font-size:14px; padding:10px 14px; margin-bottom:10px; outline:none; }
+  .empty { text-align:center; color:var(--tg-hint); padding:22px; font-size:14px; line-height:1.7; }
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:flex-end;
+    justify-content:center; z-index:40; opacity:0; pointer-events:none; transition:opacity .2s ease; }
+  .overlay.show { opacity:1; pointer-events:auto; }
+  .sheet { background:var(--tg-card); border-radius:16px 16px 0 0; padding:18px; width:100%; max-width:440px;
+    transform:translateY(30px); transition:transform .22s ease; }
+  .overlay.show .sheet { transform:translateY(0); }
+  .field { width:100%; border:1px solid var(--tg-sep); border-radius:10px; background:var(--tg-bg);
+    color:var(--tg-text); font-size:14px; padding:10px 12px; margin-bottom:10px; outline:none; font-family:inherit; }
+  .row-btns { display:flex; gap:10px; } .row-btns .tg-btn { flex:1; margin:4px 0 0; }
+  .tg-btn.secondary { background:transparent; color:var(--tg-link); border:1px solid var(--tg-sep); }
+  .toast { position:fixed; left:50%; bottom:84px; transform:translateX(-50%) translateY(16px);
+    background:#17212b; color:#fff; padding:12px 20px; border-radius:12px; font-size:14px;
+    opacity:0; transition:all .25s ease; z-index:50; pointer-events:none; max-width:90vw; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .tabbar { position:fixed; bottom:0; left:0; right:0; background:var(--tg-card);
+    border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
+  .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); text-decoration:none; }
+  .tab .ico { font-size:22px; display:block; }
+  body.leleka { --tg-bg:#F7F2E9; --tg-card:#FFFDF9; --tg-text:#251A10; --tg-hint:#8A7860;
+    --tg-link:#BD5A2A; --tg-btn:#BD5A2A; --tg-sep:#E4D7C1; --tg-header:#251A10; }
+</style>
+</head>
+<body>
+<script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
+<header>
+  <div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>🪶 AI Leleka CRM <span>feed hub</span></h1></div>
+  <div><button class="tg-btn" style="margin:0 8px 0 0" onclick="openSrcModal()">+ Джерело</button><button class="tg-btn" style="margin:0" onclick="exportFeed()">⤓ Експорт XML</button></div>
+</header>
+<main>
+  <div class="kpis">
+    <div class="kpi"><div class="num" id="kSrc">—</div><div class="lbl">Джерел</div></div>
+    <div class="kpi"><div class="num" id="kProd">—</div><div class="lbl">Товарів у каталозі</div></div>
+    <div class="kpi"><div class="num" id="kLast">—</div><div class="lbl">Останній запуск</div></div>
+  </div>
+  <div class="card"><h2>Джерела фідів</h2><div id="srcList"></div></div>
+  <div class="card"><h2>Журнал запусків</h2>
+    <table><tr><th>Джерело</th><th>Статус</th><th>+/-</th><th>Коли</th></tr><tbody id="runRows"></tbody></table>
+  </div>
+  <div class="card"><h2>Каталог товарів</h2>
+    <input class="search" id="pq" placeholder="🔍 SKU / назва / бренд…" oninput="renderProducts()">
+    <table><tr><th>SKU</th><th>Назва</th><th>Ціна</th><th>Залишок</th></tr><tbody id="prodRows"></tbody></table>
+    <div class="empty" id="prodEmpty" hidden>Порожньо — додайте перше джерело ↑<br><small>YML (Prom/Rozetka), Google Merchant або свій XML</small></div>
+  </div>
+</main>
+<div class="overlay" id="srcModal" onclick="if(event.target===this)closeSrcModal()">
+  <div class="sheet">
+    <h3 style="margin-bottom:12px">Нове джерело</h3>
+    <input class="field" id="sName" placeholder="Назва (напр. Постачальник А)">
+    <input class="field" id="sUrl" placeholder="https://…/feed.xml">
+    <select class="field" id="sInterval"><option value="15">Оновлення: кожні 15 хв</option><option value="60" selected>Оновлення: щогодини</option><option value="1440">Оновлення: раз на добу</option></select>
+    <div class="row-btns">
+      <button class="tg-btn secondary" onclick="closeSrcModal()">Скасувати</button>
+      <button class="tg-btn" onclick="saveSource()">Додати</button>
+    </div>
+  </div>
+</div>
+<nav class="tabbar">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="deals.html"><span class="ico">🤝</span>Угоди</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab" href="billing.html"><span class="ico">💳</span>Тариф</a>
+  <a class="tab" href="integrations.html"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  function toast(msg,ms){let el=document.querySelector('.toast');
+    if(!el){el=document.createElement('div');el.className='toast';document.body.appendChild(el);}
+    el.textContent=msg;el.classList.add('show');clearTimeout(el._t);
+    el._t=setTimeout(()=>el.classList.remove('show'),ms||2500);}
+  // Демо-дані, якщо API недоступне
+  const MOCK = {
+    sources: [
+      {id:'1', name:'Постачальник А (YML)', url:'https://a.example/feed.xml', interval_minutes:60, last_status:'ok', last_run_at:'12 хв тому'},
+      {id:'2', name:'Rozetka seller', url:'https://r.example/roz.xml', interval_minutes:1440, last_status:'error', last_run_at:'вчора'},
+    ],
+    runs: [
+      {source:'Постачальник А', status:'ok', delta:'+12 / ~3', when:'12 хв тому'},
+      {source:'Rozetka seller', status:'error', delta:'—', when:'вчора'},
+    ],
+    products: [
+      {sku:'SKU-1', name:'Смарт-годинник', price:4500, stock:12},
+      {sku:'SKU-2', name:'Навушники JBL', price:1800, stock:0},
+    ],
+  };
+  let live = { sources: null, runs: null, products: null };
+  function openSrcModal(){ document.getElementById('srcModal').classList.add('show'); }
+  function closeSrcModal(){ document.getElementById('srcModal').classList.remove('show'); }
+  async function saveSource(){
+    const body = { name: document.getElementById('sName').value.trim(),
+      url: document.getElementById('sUrl').value.trim(),
+      interval_minutes: Number(document.getElementById('sInterval').value) };
+    if (!body.name || !body.url) { toast('Заповніть назву і URL'); return; }
+    const r = await api('/feedhub/sources', { method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    closeSrcModal();
+    if (r) { toast('✅ Джерело додано, запускаю…'); runSource(r.id); loadAll(); }
+    else toast('Демо-режим: увійдіть через 🔑 — джерело збережеться по-справжньому');
+  }
+  async function runSource(id){
+    const r = await api('/feedhub/sources/' + id + '/run', { method:'POST' });
+    toast(r ? `Готово: +${r.added} ~${r.updated} −${r.removed} (${r.status})` : 'Демо: у проді тут реальний запуск');
+    loadAll();
+  }
+  async function delSource(id){
+    const r = await api('/feedhub/sources/' + id, { method:'DELETE' });
+    toast(r ? 'Видалено' : 'Демо-режим'); loadAll();
+  }
+  async function exportFeed(){
+    const t = (typeof apiToken === 'function') ? apiToken() : null;
+    if (!t) { toast('Демо: /feedhub/export.xml — потрібен вхід через 🔑'); return; }
+    try {
+      const r = await fetch(API_BASE + '/feedhub/export.xml', { headers:{'Authorization':'Bearer '+t} });
+      if (!r.ok) throw 0;
+      const blob = await r.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'leleka-feed.xml'; a.click();
+      toast('⤓ XML збережено');
+    } catch(e) { toast('Не вдалося вивантажити'); }
+  }
+  function renderSources(){
+    const list = live.sources || MOCK.sources;
+    document.getElementById('kSrc').textContent = list.length;
+    const box = document.getElementById('srcList'); box.innerHTML = '';
+    if (!list.length) { box.innerHTML = '<div class="empty">Немає джерел — додайте перше ↑</div>'; return; }
+    list.forEach(s => {
+      const st = s.last_status || 'never';
+      const row = document.createElement('div'); row.className = 'src';
+      row.innerHTML = `<span class="dot ${st}"></span><div><b></b><div class="meta"></div></div>
+        <div class="acts"><button class="mini">Оновити</button><button class="mini">✕</button></div>`;
+      row.querySelector('b').textContent = s.name;
+      row.querySelector('.meta').textContent = `${s.interval_minutes} хв · ${s.last_run_at || 'ще не запускалось'}`;
+      const [bRun, bDel] = row.querySelectorAll('.mini');
+      bRun.onclick = () => runSource(s.id); bDel.onclick = () => delSource(s.id);
+      box.appendChild(row);
+    });
+  }
+  function renderRuns(){
+    const rows = live.runs || MOCK.runs;
+    document.getElementById('kLast').textContent = rows.length ? (rows[0].when || rows[0].started_at || '—') : '—';
+    document.getElementById('runRows').innerHTML = rows.map(r => {
+      const tds = [(r.source||''), `<span class="st ${r.status}">${r.status}</span>`,
+        (r.delta || `+${r.added||0} ~${r.updated||0} −${r.removed||0}`), (r.when || r.started_at || '')];
+      const tr = document.createElement('tr');
+      tds.forEach((v,i)=>{const td=document.createElement('td'); if(i>0&&i<3){td.innerHTML=v;}else{td.textContent=v;} tr.appendChild(td);});
+      return tr.outerHTML;
+    }).join('');
+  }
+  let allProducts = [];
+  function renderProducts(){
+    const q = document.getElementById('pq').value.toLowerCase();
+    const list = (live.products || MOCK.products).filter(p =>
+      !q || (p.sku + ' ' + p.name + ' ' + (p.brand || '')).toLowerCase().includes(q));
+    allProducts = list;
+    document.getElementById('kProd').textContent = (live.products || MOCK.products).length;
+    document.getElementById('prodEmpty').hidden = list.length > 0;
+    document.getElementById('prodRows').innerHTML = list.map(p => {
+      const tr = document.createElement('tr');
+      [p.sku, p.name, Math.round(p.price) + ' ₴', p.stock].forEach(v => {
+        const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+      return tr.outerHTML;
+    }).join('');
+  }
+  async function loadAll(){
+    try {
+      const [s, r, p] = await Promise.all([
+        api('/feedhub/sources'), api('/feedhub/runs?limit=10'), api('/feedhub/products?limit=100')]);
+      if (s) live.sources = s;
+      if (r) live.runs = r;
+      if (p) live.products = p.items || p;
+      if (s || r || p) toast('🔗 Живі дані Feed Hub');
+    } catch(e) {}
+    renderSources(); renderRuns(); renderProducts();
+  }
+  loadAll();
+</script>
+</body>
+</html>

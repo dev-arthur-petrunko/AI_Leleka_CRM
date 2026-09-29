@@ -277,3 +277,88 @@ class BillingOrder(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/paid/failed
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class FeedSource(Base):
+    """Джерело товарів: URL фіда + розклад + маппинг. Ключі — шифровано (як integrations)."""
+
+    __tablename__ = "feed_sources"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    auth: Mapped[dict] = mapped_column(JSONB, default=dict)  # ENCRYPTED: {type: basic/token, ...}
+    format: Mapped[str] = mapped_column(String(20), default="auto")  # auto/yml/google/facebook/custom
+    interval_minutes: Mapped[int] = mapped_column(default=60)  # 15/60/1440
+    priority: Mapped[int] = mapped_column(default=0)  # вище = важливіше при склейці
+    settings: Mapped[dict] = mapped_column(JSONB, default=dict)  # markup_pct, rounding, exclude_*, field_map, etag
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status: Mapped[str | None] = mapped_column(String(20))  # ok/error/skipped
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class FeedRun(Base):
+    """Журнал запусків: скільки додано/оновлено/видалено + помилки."""
+
+    __tablename__ = "feed_runs"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feed_sources.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(20), default="ok")  # ok/error/skipped
+    added: Mapped[int] = mapped_column(default=0)
+    updated: Mapped[int] = mapped_column(default=0)
+    removed: Mapped[int] = mapped_column(default=0)
+    errors: Mapped[dict] = mapped_column(JSONB, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Product(Base):
+    """Обʼєднаний товар (один рядок на SKU після склейки джерел)."""
+
+    __tablename__ = "products"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    sku: Mapped[str] = mapped_column(Text, nullable=False)  # ключ склейки: SKU/vendorCode/GTIN
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    currency: Mapped[str] = mapped_column(String(8), default="UAH")
+    stock: Mapped[int] = mapped_column(default=0)
+    brand: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str | None] = mapped_column(Text)
+    attrs: Mapped[dict] = mapped_column(JSONB, default=dict)  # характеристики
+    sources: Mapped[dict] = mapped_column(JSONB, default=dict)  # {source_id: offer_id} — звідки значення
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class ProductOffer(Base):
+    """Пропозиція конкретного джерела (сировина до склейки)."""
+
+    __tablename__ = "product_offers"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    product_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("products.id", ondelete="SET NULL")
+    )
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feed_sources.id", ondelete="CASCADE"), nullable=False
+    )
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    currency: Mapped[str] = mapped_column(String(8), default="UAH")
+    stock: Mapped[int] = mapped_column(default=0)
+    raw: Mapped[dict] = mapped_column(JSONB, default=dict)
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())

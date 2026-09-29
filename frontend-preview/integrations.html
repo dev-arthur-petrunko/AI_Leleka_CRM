@@ -44,6 +44,9 @@
 <script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
 <header><div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1><img src="assets/leleka-mascot.png" alt="Лелека" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:center 12%;vertical-align:-9px;margin-right:7px;box-shadow:0 2px 8px rgba(2,132,199,.45);background:#0e1621">AI Leleka CRM <span>інтеграції</span></h1></div></header>
 <main>
+  <div class="card" onclick="location='feedhub.html'" style="cursor:pointer;border:1px solid var(--tg-link)"><h2>📡 Feed Hub — каталог товарів з XML-фідів</h2>
+    <div class="row"><div class="logo" style="background:#3390ec">📡</div><div>YML · Google Merchant · свій XML<div class="meta">натисніть, щоб відкрити →</div></div></div>
+  </div>
   <div class="card"><h2>Доставка і каса</h2>
     <div class="row"><div class="logo" style="background:#e53935">📦</div><div>Нова Пошта<div class="meta">авто-ТТН при оплаті</div></div><span class="st off">stub</span><button class="mini" onclick="t('novaposhta')">Тест</button></div>
     <div class="row"><div class="logo" style="background:#17212b">🧾</div><div>Checkbox РРО<div class="meta">фіскальний чек</div></div><span class="st off">stub</span><button class="mini" onclick="t('checkbox')">Тест</button></div>
