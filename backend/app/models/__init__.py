@@ -293,11 +293,46 @@ class FeedSource(Base):
     format: Mapped[str] = mapped_column(String(20), default="auto")  # auto/yml/google/facebook/custom
     interval_minutes: Mapped[int] = mapped_column(default=60)  # 15/60/1440
     priority: Mapped[int] = mapped_column(default=0)  # вище = важливіше при склейці
-    settings: Mapped[dict] = mapped_column(JSONB, default=dict)  # markup_pct, rounding, exclude_*, field_map, etag
+    settings: Mapped[dict] = mapped_column(JSONB, default=dict)  # markup_pct, rounding, exclude_*, field_map
+    last_etag: Mapped[str | None] = mapped_column(Text)
+    last_modified: Mapped[str | None] = mapped_column(Text)
+    last_hash: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str | None] = mapped_column(String(20))  # ok/error/skipped (дубль last_status для ТЗ)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_status: Mapped[str | None] = mapped_column(String(20))  # ok/error/skipped
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class FeedMapping(Base):
+    """Візуальний маппинг «тег XML → поле CRM» + шаблони для площадок."""
+
+    __tablename__ = "feed_mappings"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    source_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feed_sources.id", ondelete="CASCADE")
+    )  # NULL = шаблон для формату (template_for)
+    template_for: Mapped[str | None] = mapped_column(String(20))  # yml/google/facebook
+    xml_path: Mapped[str] = mapped_column(Text, nullable=False)
+    crm_field: Mapped[str] = mapped_column(String(64), nullable=False)
+    transform: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class MergeRule(Base):
+    """Правило склейки на поле: source_priority / min / max / latest."""
+
+    __tablename__ = "merge_rules"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    field: Mapped[str] = mapped_column(String(64), nullable=False)  # price/stock/name/...
+    strategy: Mapped[str] = mapped_column(String(20), default="source_priority")
+    source_order: Mapped[list] = mapped_column(JSONB, default=list)  # [source_id...] за пріоритетом
 
 
 class FeedRun(Base):
@@ -316,12 +351,13 @@ class FeedRun(Base):
     updated: Mapped[int] = mapped_column(default=0)
     removed: Mapped[int] = mapped_column(default=0)
     errors: Mapped[dict] = mapped_column(JSONB, default=dict)
+    error_text: Mapped[str | None] = mapped_column(Text)  # коротко для списку (ТЗ)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Product(Base):
-    """Обʼєднаний товар (один рядок на SKU після склейки джерел)."""
+    """Обʼєднаний товар (один рядок на ключ склейки після merge_rules)."""
 
     __tablename__ = "products"
     id: Mapped[uuid.UUID] = _uuid()
@@ -329,14 +365,20 @@ class Product(Base):
         UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
     )
     sku: Mapped[str] = mapped_column(Text, nullable=False)  # ключ склейки: SKU/vendorCode/GTIN
+    gtin: Mapped[str | None] = mapped_column(Text)
+    vendor_code: Mapped[str | None] = mapped_column(Text)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
     price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     currency: Mapped[str] = mapped_column(String(8), default="UAH")
     stock: Mapped[int] = mapped_column(default=0)
     brand: Mapped[str | None] = mapped_column(Text)
     category: Mapped[str | None] = mapped_column(Text)
+    images: Mapped[dict] = mapped_column(JSONB, default=list)
     attrs: Mapped[dict] = mapped_column(JSONB, default=dict)  # характеристики
-    sources: Mapped[dict] = mapped_column(JSONB, default=dict)  # {source_id: offer_id} — звідки значення
+    sources: Mapped[dict] = mapped_column(JSONB, default=dict)  # {source_id: offer_id}
+    merged_from: Mapped[dict] = mapped_column(JSONB, default=dict)  # {поле: source_id}
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
 

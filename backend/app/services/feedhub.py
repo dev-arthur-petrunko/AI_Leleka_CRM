@@ -25,8 +25,11 @@ from sqlalchemy.orm import Session
 from app.core.security import decrypt_credentials
 from app.models import FeedRun, FeedSource, Product, ProductOffer
 
-MAX_FEED_BYTES = 100 * 1024 * 1024
-FETCH_TIMEOUT = 30
+MAX_FEED_BYTES = 200 * 1024 * 1024  # ТЗ: 200 МБ
+FETCH_TIMEOUT = 60  # ТЗ: 60 c
+MAX_REDIRECTS = 3  # ТЗ: не більше 3
+FETCH_RETRIES = 3  # ТЗ: 3 ретраї з експоненційною паузою
+BULK_BATCH = 1000  # ТЗ: пачками по 1000
 
 
 def _guard_url(url: str):
@@ -45,34 +48,49 @@ def _guard_url(url: str):
 
 
 def fetch_feed(source: FeedSource, auth: dict) -> dict:
-    """Завантажити фід. Повертає {content, skipped, etag}."""
+    """Завантажити фід: ETag/If-Modified-Since, 3 ретраї, ліміти. Повертає {content, skipped, etag}."""
     _guard_url(source.url)
     headers = {"User-Agent": "AI-Leleka-FeedHub/1.0"}
-    etag = (source.settings or {}).get("etag")
+    etag = source.last_etag or (source.settings or {}).get("etag")
     if etag:
         headers["If-None-Match"] = etag
+    if source.last_modified:
+        headers["If-Modified-Since"] = source.last_modified
     req_kwargs: dict = {"headers": headers, "timeout": FETCH_TIMEOUT, "stream": True}
     at = auth.get("type")
     if at == "basic":
         req_kwargs["auth"] = (auth.get("login", ""), auth.get("password", ""))
     elif at == "token":
         req_kwargs["headers"] = {**headers, "Authorization": f"Bearer {auth.get('token', '')}"}
-    r = requests.get(source.url, **req_kwargs)
-    if r.status_code == 304:
-        return {"content": None, "skipped": True, "reason": "not-modified-etag"}
-    r.raise_for_status()
-    buf = io.BytesIO()
-    total = 0
-    for chunk in r.iter_content(65536):
-        total += len(chunk)
-        if total > MAX_FEED_BYTES:
-            raise ValueError(f"Фід більше {MAX_FEED_BYTES // 1024 // 1024} МБ — відхилено")
-        buf.write(chunk)
-    content = buf.getvalue()
-    digest = hashlib.sha256(content).hexdigest()
-    if (source.settings or {}).get("hash") == digest:
-        return {"content": None, "skipped": True, "reason": "not-modified-hash"}
-    return {"content": content, "skipped": False, "etag": r.headers.get("ETag"), "hash": digest}
+    last_err: Exception | None = None
+    for attempt in range(FETCH_RETRIES):
+        try:
+            session = requests.Session()
+            session.max_redirects = MAX_REDIRECTS
+            r = session.get(source.url, **req_kwargs)
+            if r.status_code == 304:
+                return {"content": None, "skipped": True, "reason": "not-modified-etag"}
+            r.raise_for_status()
+            buf = io.BytesIO()
+            total = 0
+            for chunk in r.iter_content(65536):
+                total += len(chunk)
+                if total > MAX_FEED_BYTES:
+                    raise ValueError(f"Фід більше {MAX_FEED_BYTES // 1024 // 1024} МБ — відхилено")
+                buf.write(chunk)
+            content = buf.getvalue()
+            digest = hashlib.sha256(content).hexdigest()
+            known_hash = source.last_hash or (source.settings or {}).get("hash")
+            if known_hash == digest:
+                return {"content": None, "skipped": True, "reason": "not-modified-hash"}
+            return {"content": content, "skipped": False,
+                    "etag": r.headers.get("ETag"),
+                    "last_modified": r.headers.get("Last-Modified"),
+                    "hash": digest}
+        except Exception as e:  # noqa: BLE001 — ретрай, фінальна помилка після циклу
+            last_err = e
+            time.sleep(min(2 ** attempt, 8))
+    raise last_err if last_err else RuntimeError("fetch failed")
 
 
 def detect_format(content: bytes) -> str:
@@ -175,13 +193,53 @@ def apply_markup(price: float, settings: dict) -> float:
     return round(price, 2)
 
 
+def _merge_rules(db: Session, tenant_id: UUID) -> dict[str, dict]:
+    """Правила склейки з merge_rules; дефолти: price→min, stock→max, решта→source_priority."""
+    from app.models import MergeRule
+
+    out = {"price": {"strategy": "min"}, "stock": {"strategy": "max"}}
+    for r in db.query(MergeRule).filter(MergeRule.tenant_id == tenant_id).all():
+        out[r.field] = {"strategy": r.strategy, "order": r.source_order or []}
+    return out
+
+
+def _pick_value(field: str, current, current_src: str | None, new, new_src: str,
+                rules: dict, src_priority: dict[str, int]):
+    """Одне поле за стратегією; повертає (значення, source_id)."""
+    rule = rules.get(field, {"strategy": "source_priority"})
+    strategy = rule.get("strategy", "source_priority")
+    if current is None:
+        return new, new_src
+    if strategy == "min":
+        try:
+            return (new, new_src) if float(new) < float(current) else (current, current_src)
+        except (TypeError, ValueError):
+            return current, current_src
+    if strategy == "max":
+        try:
+            return (new, new_src) if float(new) > float(current) else (current, current_src)
+        except (TypeError, ValueError):
+            return current, current_src
+    if strategy == "latest":
+        return new, new_src
+    # source_priority: порядок з правила або числовий priority джерел
+    order = rule.get("order") or []
+    rank = (lambda s: order.index(s) if s in order else len(order) + 100 - src_priority.get(s, 0))
+    return (new, new_src) if rank(new_src) < rank(current_src) else (current, current_src)
+
+
 def merge_source(db: Session, tenant_id: UUID, source: FeedSource,
                  offers: list[dict]) -> dict:
-    """Склейка: ключ SKU; ціна — мінімальна з урахуванням націнки; назва/опис — за priority."""
+    """Склейка за merge_rules; merged_from фіксує джерело кожного поля; flush пачками."""
+    from app.models import FeedSource as FS
+
     settings = source.settings or {}
+    rules = _merge_rules(db, tenant_id)
+    prios = {str(s.id): (s.priority or 0) for s in
+             db.query(FS).filter(FS.tenant_id == tenant_id).all()}
     stats = {"added": 0, "updated": 0}
     seen_offer_ids: set[str] = set()
-    for off in offers:
+    for n, off in enumerate(offers, start=1):
         if not apply_filters(off, settings):
             continue
         price = apply_markup(off["price"], settings)
@@ -192,20 +250,33 @@ def merge_source(db: Session, tenant_id: UUID, source: FeedSource,
                            price=price, currency=off["currency"], stock=off["stock"],
                            brand=off.get("brand"), category=off.get("category"),
                            attrs=off.get("attrs") or {},
-                           sources={str(source.id): off["sku"]})
+                           sources={str(source.id): off["sku"]},
+                           merged_from={f: str(source.id) for f in
+                                        ("name", "price", "stock", "brand", "category")})
             db.add(prod)
             db.flush()
             stats["added"] += 1
         else:
-            # ціна — мінімальна серед джерел; опис/назва — від джерела з вищим priority
-            if price and (not prod.price or price < float(prod.price)):
-                prod.price, prod.currency = price, off["currency"]
-            prod.stock = max(prod.stock or 0, off["stock"])
+            merged = dict(prod.merged_from or {})
+            for field, new_val in (("price", price), ("stock", off["stock"]),
+                                   ("name", off["name"]), ("brand", off.get("brand")),
+                                   ("category", off.get("category"))):
+                if new_val is None:
+                    continue
+                cur = getattr(prod, field)
+                val, src = _pick_value(field, cur, merged.get(field), new_val,
+                                       str(source.id), rules, prios)
+                setattr(prod, field, val)
+                merged[field] = src
+            if off.get("currency"):
+                prod.currency = off["currency"]
             srcs = dict(prod.sources or {})
             srcs[str(source.id)] = off["sku"]
-            prod.sources = srcs
+            prod.sources, prod.merged_from = srcs, merged
             prod.updated_at = datetime.now(timezone.utc)
             stats["updated"] += 1
+            if n % BULK_BATCH == 0:
+                db.flush()
         offer = db.query(ProductOffer).filter(
             ProductOffer.tenant_id == tenant_id, ProductOffer.source_id == source.id,
             ProductOffer.external_id == off["sku"]).first()
@@ -251,20 +322,23 @@ def run_source(db: Session, source_id: UUID) -> dict:
             offers = parse_offers(fetched["content"], fmt, (source.settings or {}).get("field_map"))
             stats = merge_source(db, source.tenant_id, source, offers)
             run.added, run.updated, run.removed = stats["added"], stats["updated"], stats["removed"]
-            st = dict(source.settings or {})
             if fetched.get("etag"):
-                st["etag"] = fetched["etag"]
+                source.last_etag = fetched["etag"]
+            if fetched.get("last_modified"):
+                source.last_modified = fetched["last_modified"]
             if fetched.get("hash"):
-                st["hash"] = fetched["hash"]
-            source.settings = st
+                source.last_hash = fetched["hash"]
         source.last_status = run.status
+        source.status = run.status  # дубль для ТЗ-сумісності
         source.last_run_at = datetime.now(timezone.utc)
         db.commit()
         return {"ok": True, "status": run.status, "added": run.added,
                 "updated": run.updated, "removed": run.removed}
     except Exception as e:  # noqa: BLE001 — помилка фіксується в run, не валить планувальник
         run.status, run.errors = "error", {"error": str(e)[:500]}
+        run.error_text = str(e)[:300]
         source.last_status = "error"
+        source.status = "error"
         db.commit()
         notify_queue.push(source.tenant_id,
                           f"⚠️ Фід «{source.name}» впав: {str(e)[:200]}", kind="feed_error",

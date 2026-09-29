@@ -312,6 +312,10 @@ CREATE TABLE feed_sources (
   is_active     BOOLEAN NOT NULL DEFAULT TRUE,
   last_run_at   TIMESTAMPTZ,
   last_status   TEXT,
+  last_etag     TEXT,                              -- ТЗ: If-None-Match
+  last_modified TEXT,                              -- ТЗ: If-Modified-Since
+  last_hash     TEXT,                              -- sha256 для скіпу незмінного
+  status        TEXT,                              -- дубль last_status для ТЗ-сумісності
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -324,6 +328,7 @@ CREATE TABLE feed_runs (
   updated       INT NOT NULL DEFAULT 0,
   removed       INT NOT NULL DEFAULT 0,
   errors        JSONB NOT NULL DEFAULT '{}',
+  error_text    TEXT,                              -- коротко для списку (ТЗ)
   started_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   finished_at   TIMESTAMPTZ
 );
@@ -333,14 +338,20 @@ CREATE TABLE products (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   sku           TEXT NOT NULL,                 -- ключ склейки: SKU/vendorCode/GTIN
+  gtin          TEXT,
+  vendor_code   TEXT,
   name          TEXT NOT NULL,
+  title         TEXT,
+  description   TEXT,
   price         NUMERIC(12,2) NOT NULL DEFAULT 0,
   currency      TEXT NOT NULL DEFAULT 'UAH',
   stock         INT NOT NULL DEFAULT 0,
   brand         TEXT,
   category      TEXT,
+  images        JSONB NOT NULL DEFAULT '[]',
   attrs         JSONB NOT NULL DEFAULT '{}',
   sources       JSONB NOT NULL DEFAULT '{}',   -- {source_id: offer_id}
+  merged_from   JSONB NOT NULL DEFAULT '{}',   -- {поле: source_id} (ТЗ)
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (tenant_id, sku)
@@ -361,6 +372,28 @@ CREATE TABLE product_offers (
   seen_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX idx_offers_source ON product_offers(source_id, seen_at DESC);
+
+-- feed_mappings: візуальний маппинг «тег XML → поле CRM» (ТЗ 1.1)
+CREATE TABLE feed_mappings (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  source_id     UUID REFERENCES feed_sources(id) ON DELETE CASCADE,
+  template_for  TEXT,                              -- yml/google/facebook (шаблон)
+  xml_path      TEXT NOT NULL,
+  crm_field     TEXT NOT NULL,
+  transform     JSONB NOT NULL DEFAULT '{}',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- merge_rules: стратегія склейки на поле (ТЗ 1.4)
+CREATE TABLE merge_rules (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id     UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  field         TEXT NOT NULL,                     -- price/stock/name/...
+  strategy      TEXT NOT NULL,                     -- source_priority/min/max/latest
+  source_order  JSONB NOT NULL DEFAULT '[]',       -- [source_id...] за пріоритетом
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- ============================================================
 -- ЗАМЕЧАНИЕ ДЛЯ FASTAPI:
