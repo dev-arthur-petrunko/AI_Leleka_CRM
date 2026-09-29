@@ -84,12 +84,20 @@
   }
   if (qs.get('mode') === 'register' || wantPlan !== 'free') showTab('register');
   async function doLogin(){
-    document.getElementById('err').textContent = '';
+    const errBox = document.getElementById('err');
+    errBox.textContent = '';
+    if (location.protocol === 'file:') {
+      errBox.textContent = '⛔ Сторінку відкрито як ФАЙЛ — браузер блокує вхід. Відкрийте http://localhost:8080/login.html';
+      return;
+    }
     try {
       await apiLogin(document.getElementById('email').value.trim(),
                      document.getElementById('pass').value);
       location = 'dashboard.html';
-    } catch(e) { document.getElementById('err').textContent = 'Не вийшло: ' + e.message + ' (API запущено?)'; }
+    } catch(e) { errBox.textContent = 'Не вийшло: ' + e.message + ' (API запущено? Спробуйте http://localhost:8080/login.html)'; }
+  }
+  if (location.protocol === 'file:') {
+    document.getElementById('err').textContent = '⛔ Відкрийте через http://localhost:8080/login.html — з файлу вхід заблоковано браузером.';
   }
   async function doRegister(){
     const err = document.getElementById('err'); err.textContent = '';
