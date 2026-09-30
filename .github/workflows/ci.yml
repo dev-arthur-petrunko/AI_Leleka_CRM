@@ -1,0 +1,40 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: leleka
+          POSTGRES_PASSWORD: leleka
+          POSTGRES_DB: leleka_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgresql+psycopg2://leleka:leleka@localhost:5432/leleka_test
+      TEST_DATABASE_URL: postgresql+psycopg2://leleka:leleka@localhost:5432/leleka_test
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-secret-key-min-32-chars-long-0123456789
+      CREDENTIALS_KEY: ci-credentials-key
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r backend/requirements.txt
+      - run: pip install ruff gitleaks 2>/dev/null || pip install ruff
+      - run: gitleaks detect --source . --no-git || true
+      - run: ruff check backend || true
+      - run: python -m compileall backend/app
+      - run: cd backend && alembic upgrade head
+      - run: cd backend && pytest -q
