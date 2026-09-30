@@ -74,9 +74,6 @@
     background: linear-gradient(90deg, var(--tg-sep) 25%, var(--tg-card) 50%, var(--tg-sep) 75%) !important;
     background-size: 400px 100% !important; animation: shimmer 1.1s infinite linear; }
   #funnel { cursor: pointer; }
-  /* --- окремий бренд Leleka (веб поза Telegram): крем + теракот --- */
-  body.leleka { --tg-bg: #faf6ef; --tg-card: #fffdf8; --tg-text: #3b2f2f; --tg-hint: #a08c7a;
-    --tg-link: #c96f2f; --tg-btn: #c96f2f; --tg-sep: #eadfce; --tg-header: #3b2f2f; }
   .theme-btn { background: transparent; border: 1px solid rgba(255,255,255,.35); color: #fff;
     border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; margin-left: 8px;
     transition: transform .15s ease; }
@@ -87,7 +84,7 @@
 <header>
   <div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button>
   <h1><img src="assets/leleka-mascot.png" alt="Лелека" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:center 12%;vertical-align:-9px;margin-right:7px;box-shadow:0 2px 8px rgba(2,132,199,.45);background:#0e1621">AI Leleka CRM <span>дашборд</span></h1></div>
-  <div><span class="badge">PREVIEW · /analytics/dashboard</span><a href="login.html" class="theme-btn" style="text-decoration:none" title="Увійти (живі дані)">🔑</a><button class="theme-btn" id="themeBtn" title="Leleka web theme">🎨 Leleka</button></div>
+  <div><span class="badge">PREVIEW · /analytics/dashboard</span><a href="login.html" class="theme-btn" style="text-decoration:none" title="Увійти (живі дані)">🔑</a></div>
 </header>
 <main>
   <div class="kpis">
@@ -143,16 +140,6 @@
     el.textContent = msg; el.classList.add('show');
     clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), ms || 2500);
   }
-  // Leleka web theme (окремий бренд поза Telegram) + пам'ять вибору
-  (function () {
-    const btn = document.getElementById('themeBtn');
-    if (localStorage.getItem('leleka-theme') === '1') document.body.classList.add('leleka');
-    btn.onclick = () => {
-      const on = document.body.classList.toggle('leleka');
-      localStorage.setItem('leleka-theme', on ? '1' : '0');
-      toast(on ? '🎨 Тема Leleka: крем + теракот' : '💬 Тема Telegram');
-    };
-  })();
   // Живі дані: якщо є токен (login.html) і API відповідає — підміняємо мок.
   // Нема токена / офлайн / Free+402 → тихо лишається мок.
   let liveDashboard = null;

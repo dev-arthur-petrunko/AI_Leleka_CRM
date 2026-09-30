@@ -3,8 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <title>AI Leleka CRM — Картка клієнта</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%237dd3fc'/%3E%3Cstop offset='1' stop-color='%230369a1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='32' fill='url(%23g)'/%3E%3Ccircle cx='50' cy='12' r='6' fill='%23fde68a'/%3E%3Cpath d='M30,37 Q24,20 36,10 Q38,22 42,34 Q36,38 30,37 Z' fill='white'/%3E%3Cpath d='M36,10 Q37,20 40,30 L36,31 Q34,21 33,12 Z' fill='%230f172a'/%3E%3Cellipse cx='29' cy='41' rx='12' ry='7' fill='white'/%3E%3Cpath d='M39,39 C43,33 44,27 46,21' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='46' cy='19' r='4.2' fill='white'/%3E%3Cpolygon points='50,17 62,20.5 50,24' fill='%23f97316'/%3E%3Cpath d='M17,45 L4,51 M19,47 L7,54' stroke='%23f97316' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -58,15 +56,7 @@
   .msg-status{font-size:12.5px;color:var(--tg-hint);margin-bottom:4px;min-height:18px}
   .tab{flex:1;text-align:center;padding:8px 0 9px;font-size:10.5px;color:var(--tg-hint);text-decoration:none}
   .tab .ico{font-size:22px;display:block} .tab.active{color:var(--tg-link);font-weight:600}
-  body.leleka { --tg-bg:#F7F2E9; --tg-card:#FFFDF9; --tg-text:#251A10; --tg-hint:#8A7860;
-    --tg-link:#BD5A2A; --tg-btn:#BD5A2A; --tg-sep:#E4D7C1; --tg-header:#251A10; }
-  body.leleka { font-family:'Manrope',-apple-system,sans-serif; }
-  body.leleka h1, body.leleka h2, body.leleka h3, body.leleka .kpi .num,
-  body.leleka .price, body.leleka .num, body.leleka .amt, body.leleka .badge {
-    font-family:'Unbounded',system-ui,sans-serif; }
-
-  /* --- Кольорові акценти по картках --- */
-  :root, body.leleka { --teal:#2C5A5B; --amber:#B5791E; --green:#3E7A4B; --rose:#A8455C; }
+  :root { --teal:#2C5A5B; --amber:#B5791E; --green:#3E7A4B; --rose:#A8455C; }
   .card { border-top:4px solid transparent; }
   .card.c-teal  { border-top-color:var(--teal); }
   .card.c-amber { border-top-color:var(--amber); }
@@ -105,7 +95,6 @@
 </style>
 </head>
 <body>
-<script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
 <header><button onclick="history.length>1?history.back():location='clients.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><img src="assets/leleka-mascot.png" alt="Лелека" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:center 12%;background:#0e1621"><div>Картка клієнта</div></header>
 <main>
   <div class="profile"><div class="ava" id="pAva">О</div>

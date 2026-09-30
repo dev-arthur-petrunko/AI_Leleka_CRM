@@ -64,12 +64,9 @@
     border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
   .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); text-decoration:none; }
   .tab .ico { font-size:22px; display:block; }
-  body.leleka { --tg-bg:#F7F2E9; --tg-card:#FFFDF9; --tg-text:#251A10; --tg-hint:#8A7860;
-    --tg-link:#BD5A2A; --tg-btn:#BD5A2A; --tg-sep:#E4D7C1; --tg-header:#251A10; }
 </style>
 </head>
 <body>
-<script>try{if(localStorage.getItem('leleka-theme')==='1')document.body.classList.add('leleka')}catch(e){}</script>
 <header>
   <div style="display:flex;align-items:center;gap:10px"><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>🪶 AI Leleka CRM <span>feed hub</span></h1></div>
   <div><button class="tg-btn" style="margin:0 8px 0 0" onclick="openSrcModal()">+ Джерело</button><button class="tg-btn" style="margin:0" onclick="exportFeed()">⤓ Експорт XML</button></div>
