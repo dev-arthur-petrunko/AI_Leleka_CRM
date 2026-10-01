@@ -66,7 +66,11 @@ def list_clients(tenant_id: UUID = Depends(get_current_tenant),
 def create_client(data: ClientIn, request: Request,
                   user: User = Depends(_writer),
                   db: Session = Depends(get_db)):
-    c = Client(tenant_id=user.tenant_id, **data.model_dump())
+    from app.core.phones import normalize_phone
+
+    payload = data.model_dump()
+    payload["phone"] = normalize_phone(payload.get("phone"))
+    c = Client(tenant_id=user.tenant_id, **payload)
     db.add(c)
     db.flush()
     _audit(db, user, str(c.id), "create", new=data.model_dump(mode="json"), request=request)
@@ -99,6 +103,8 @@ def import_csv(file: UploadFile = File(...),
     if len(raw) > MAX_CSV_BYTES:
         raise HTTPException(413, f"Файл завеликий (>{MAX_CSV_BYTES // 1024 // 1024} МБ)")
     raw = raw.decode("utf-8-sig")
+    from app.core.phones import normalize_phone
+
     reader = csv.DictReader(io.StringIO(raw))
     created = 0
     for row in reader:
@@ -111,7 +117,7 @@ def import_csv(file: UploadFile = File(...),
         db.add(Client(tenant_id=user.tenant_id, name=name,
                       first_name=(row.get("first_name") or "").strip() or None,
                       last_name=(row.get("last_name") or "").strip() or None,
-                      phone=(row.get("phone") or "").strip() or None,
+                      phone=normalize_phone(row.get("phone")),
                       email=(row.get("email") or "").strip() or None,
                       segment=seg, source="import"))
         created += 1

@@ -15,6 +15,7 @@ from app.api import (
     integrations,
     messages,
     notifications,
+    orders,
     tasks,
     webhooks,
 )
@@ -48,6 +49,7 @@ app.include_router(billing.router)
 app.include_router(integrations.router)
 app.include_router(messages.router)
 app.include_router(notifications.router)
+app.include_router(orders.router)
 
 
 @app.on_event("startup")

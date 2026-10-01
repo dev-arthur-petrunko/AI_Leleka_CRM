@@ -84,6 +84,7 @@ class Client(Base):
     source: Mapped[str] = mapped_column(String(20), default="manual")
     segment: Mapped[str] = mapped_column(String(20), default="new")
     notes: Mapped[str] = mapped_column(Text, default="")
+    custom: Mapped[dict] = mapped_column(JSONB, default=dict)  # кастомні поля (фаза 2.5)
     gdpr_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
@@ -422,3 +423,195 @@ class PasswordResetToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     used: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+# ================= Фаза 2: модель магазину =================
+
+class Order(Base):
+    """Замовлення магазину. Ідемпотентність: UNIQUE(tenant_id, source, external_id)."""
+
+    __tablename__ = "orders"
+    __table_args__ = (UniqueConstraint("tenant_id", "source", "external_id"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    client_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="SET NULL")
+    )
+    deal_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("deals.id", ondelete="SET NULL")
+    )
+    source: Mapped[str] = mapped_column(String(20), nullable=False)  # prom/rozetka/site/manual
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    order_number: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="new")
+    payment_status: Mapped[str] = mapped_column(String(20), default="unpaid")
+    payment_method: Mapped[str | None] = mapped_column(String(20))
+    currency: Mapped[str] = mapped_column(String(8), default="UAH")
+    subtotal: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    discount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    shipping_cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    total: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    placed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    raw: Mapped[dict] = mapped_column(JSONB, default=dict)
+    custom: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    product_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("products.id", ondelete="SET NULL")
+    )
+    sku: Mapped[str | None] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    qty: Mapped[float] = mapped_column(Numeric(12, 3), default=1)
+    unit_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    discount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    total: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+    __table_args__ = (UniqueConstraint("tenant_id", "provider", "external_id"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    order_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL")
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Shipment(Base):
+    __tablename__ = "shipments"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    carrier: Mapped[str] = mapped_column(String(20), default="novaposhta")
+    ttn: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str | None] = mapped_column(String(64))
+    status_code: Mapped[str | None] = mapped_column(String(32))
+    cod_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Return(Base):
+    __tablename__ = "returns"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    reason: Mapped[str | None] = mapped_column(Text)
+    amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    status: Mapped[str] = mapped_column(String(20), default="new")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class OrderStatusHistory(Base):
+    __tablename__ = "order_status_history"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="CASCADE"), nullable=False
+    )
+    from_status: Mapped[str | None] = mapped_column(String(20))
+    to_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+    source: Mapped[str] = mapped_column(String(20), default="manager")  # provider/manager/auto
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+    __table_args__ = (UniqueConstraint("tenant_id", "name"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    color: Mapped[str | None] = mapped_column(String(16))
+
+
+class EntityTag(Base):
+    """Привʼязка тега до сутності (client/order/deal)."""
+
+    __tablename__ = "entity_tags"
+    __table_args__ = (UniqueConstraint("tenant_id", "tag_id", "entity_type", "entity_id"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    tag_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tags.id", ondelete="CASCADE"), nullable=False
+    )
+    entity_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    entity_id: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class CustomFieldDef(Base):
+    """Визначення кастомного поля; значення — у JSONB custom сутностей."""
+
+    __tablename__ = "custom_fields"
+    __table_args__ = (UniqueConstraint("tenant_id", "entity", "key"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    entity: Mapped[str] = mapped_column(String(20), nullable=False)  # client/order
+    key: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    ftype: Mapped[str] = mapped_column(String(20), default="text")  # text/number/date/bool
+
+
+class Pipeline(Base):
+    __tablename__ = "pipelines"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PipelineStage(Base):
+    __tablename__ = "pipeline_stages"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    pipeline_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("pipelines.id", ondelete="CASCADE"), nullable=False
+    )
+    key: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(default=0)
+
+
+Index("ix_orders_tenant_status", Order.tenant_id, Order.status)
+Index("ix_orders_tenant_placed", Order.tenant_id, Order.placed_at)
+Index("ix_orders_tenant_client", Order.tenant_id, Order.client_id)

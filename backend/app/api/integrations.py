@@ -148,7 +148,7 @@ def test_provider(provider: str, user: User = Depends(_admin),
 @router.post("/{provider}/import-orders")
 def import_orders(provider: str, user: User = Depends(_admin),
                   db: Session = Depends(get_db)):
-    """Імпорт замовлень -> clients + deals."""
+    """Імпорт через upsert_order (ідемпотентно, без ліміту 50 — пагінація провайдера)."""
     if provider not in ("prom", "rozetka"):
         raise HTTPException(400, "import-orders тільки для prom/rozetka")
     _gate(user, db, provider)
@@ -162,24 +162,19 @@ def import_orders(provider: str, user: User = Depends(_admin),
     resp = adapter.pull_orders()
     if resp.get("stub"):
         return resp  # без ключа — чесний stub
+    from app.services.orders import upsert_order
+
     orders = resp.get("data", {}).get("orders", []) if isinstance(resp.get("data"), dict) else []
-    created = 0
-    for raw in orders[:50]:
+    n = 0
+    for raw in orders:
         o = normalize_order(provider, raw)
-        exists = db.query(Client).filter(
-            Client.tenant_id == user.tenant_id, Client.phone == o["phone"]).first() if o["phone"] else None
-        client = exists or Client(tenant_id=user.tenant_id, name=o["name"],
-                                  phone=o["phone"], source=provider)
-        if not exists:
-            db.add(client)
-            db.flush()
-        db.add(Deal(tenant_id=user.tenant_id, client_id=client.id,
-                    title=f"Замовлення {provider} #{o['external_id']}",
-                    order_number=o["external_id"] or None,
-                    product_summary=o.get("product_summary"),
-                    amount=o["amount"], stage="new", manager_id=user.id))
-        created += 1
+        upsert_order(db, user.tenant_id, {
+            "source": provider, "external_id": o["external_id"] or f"imp-{n}",
+            "client_name": o["name"], "phone": o["phone"],
+            "total": o["amount"], "order_number": o["external_id"],
+            "raw": {"product_summary": o.get("product_summary")}}, origin="import")
+        n += 1
     from datetime import datetime, timezone
     row.last_sync_at = datetime.now(timezone.utc)
     db.commit()
-    return {"ok": True, "imported": created}
+    return {"ok": True, "imported": n}
