@@ -1,7 +1,14 @@
-"""Prom / Rozetka: автопідтягування замовлень (п.2, п.4 плану).
+"""Prom / Rozetka: автопідтягування замовлень.
 
-Прод-флоу: маркетплейс -> POST /webhooks/{provider}?tenant=slug -> webhook_events
--> цей pull_orders (для первинного імпорту) -> clients + deals.
+Джерела формату (перевірено 2026-09-30):
+- Prom: https://my.prom.ua/api/v1/docs, https://public-api.docs.prom.ua —
+  база https://my.prom.ua/api/v1, `Authorization: Bearer <token>` (токен з кабінету,
+  «Налаштування → Управління API-токенами»), GET /orders/list (status, date_from, limit),
+  GET /orders/{id}, POST /orders/set_status.
+- Rozetka Seller API: Bearer-токен продавця (протухає → потрібне оновлення;
+  зауважено як ризик, механізм refresh — за фактом відповіді API).
+
+Прод-флоу: polling (sync_state) — основний шлях; вебхуки — прискорювач.
 """
 
 from app.integrations.base import BaseAdapter
@@ -10,15 +17,43 @@ from app.integrations.base import BaseAdapter
 class PromAdapter(BaseAdapter):
     provider = "prom"
 
-    def pull_orders(self, limit: int = 50) -> dict:
+    def pull_orders(self, limit: int = 50, date_from: str | None = None,
+                    status: str | None = None) -> dict:
         if not self.configured:
             return self.stub("pull_orders", {"limit": limit})
+        params: dict = {"limit": limit}
+        if date_from:
+            params["date_from"] = date_from
+        if status:
+            params["status"] = status
 
         def _do():
             import requests
             r = requests.get("https://my.prom.ua/api/v1/orders/list",
                 headers={"Authorization": f"Bearer {self.creds.get('token')}"},
-                params={"limit": limit}, timeout=self.timeout)
+                params=params, timeout=self.timeout)
+            r.raise_for_status()
+            return r.json()
+        return self._call(_do)
+
+    def get_order(self, order_id: str) -> dict:
+        def _do():
+            import requests
+            r = requests.get(f"https://my.prom.ua/api/v1/orders/{order_id}",
+                headers={"Authorization": f"Bearer {self.creds.get('token')}"},
+                timeout=self.timeout)
+            r.raise_for_status()
+            return r.json()
+        return self._call(_do)
+
+    def set_status(self, order_id: str, status: str) -> dict:
+        """Зворотний бік: CRM → Prom (напр. sent/delivered)."""
+
+        def _do():
+            import requests
+            r = requests.post("https://my.prom.ua/api/v1/orders/set_status",
+                headers={"Authorization": f"Bearer {self.creds.get('token')}"},
+                json={"id": order_id, "status": status}, timeout=self.timeout)
             r.raise_for_status()
             return r.json()
         return self._call(_do)

@@ -38,5 +38,31 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+  worker:  # фаза 3.1: черга + планувальник (dev)
+    build: ./backend
+    command: celery -A app.workers.celery_app.celery worker --loglevel=info --concurrency=2
+    volumes:
+      - ./backend:/code
+    environment:
+      DATABASE_URL: postgresql+psycopg2://leleka:leleka@db:5432/leleka_crm
+      SECRET_KEY: ${SECRET_KEY:?}
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:?}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+  beat:
+    build: ./backend
+    command: celery -A app.workers.celery_app.celery beat --loglevel=info
+    volumes:
+      - ./backend:/code
+    environment:
+      DATABASE_URL: postgresql+psycopg2://leleka:leleka@db:5432/leleka_crm
+      SECRET_KEY: ${SECRET_KEY:?}
+      CREDENTIALS_KEY: ${CREDENTIALS_KEY:?}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
 volumes:
   pgdata:

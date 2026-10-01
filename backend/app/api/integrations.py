@@ -67,6 +67,7 @@ def list_all(tenant_id: UUID = Depends(get_current_tenant),
     # ключі НЕ повертаємо (тільки факт наявності)
     return [{"provider": r.provider, "is_active": r.is_active,
              "has_key": bool(r.credentials),
+             "status": r.status or "ok", "last_error": r.last_error,
              "last_sync_at": r.last_sync_at} for r in rows]
 
 

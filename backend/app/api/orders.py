@@ -4,7 +4,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -70,6 +70,48 @@ def list_orders(tenant_id: UUID = Depends(get_current_tenant),
 def create_order(data: OrderIn, user: User = Depends(_writer),
                  db: Session = Depends(get_db)):
     return upsert_order(db, user.tenant_id, data.model_dump(), origin="manager")
+
+
+@router.post("/import-csv")
+def import_orders_csv(file: UploadFile = File(...), mapping: str = "{}",
+                      user: User = Depends(_writer),
+                      db: Session = Depends(get_db)):
+    """Імпорт замовлень з CSV з маппингом колонок (фаза 3.8).
+    mapping: JSON {"col_name": "field"}, field ∈ external_id, client_name,
+    phone, email, total, order_number, status."""
+    import csv
+    import io
+    import json
+
+    try:
+        field_map = json.loads(mapping or "{}")
+    except Exception:
+        raise HTTPException(400, "mapping — невалідний JSON")
+    raw = file.file.read(5 * 1024 * 1024 + 1)
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(413, "Файл завеликий (>5 МБ)")
+    from app.services.orders import upsert_order
+
+    reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
+    n = 0
+    for i, row in enumerate(reader):
+        get = lambda f, default="": (row.get(field_map.get(f, f)) or default).strip()
+        if not get("external_id") and not get("client_name"):
+            continue
+        try:
+            total = float(get("total") or 0)
+        except ValueError:
+            total = 0
+        upsert_order(db, user.tenant_id, {
+            "source": "manual", "external_id": get("external_id") or f"csv-{i}",
+            "client_name": get("client_name"), "phone": get("phone"),
+            "email": get("email"), "total": total,
+            "order_number": get("order_number"),
+            "status": get("status") or "new"}, origin="csv")
+        n += 1
+        if n >= 2000:
+            break
+    return {"ok": True, "imported": n}
 
 
 @router.get("/{order_id:uuid}")

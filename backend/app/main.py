@@ -12,6 +12,7 @@ from app.api import (
     clients,
     deals,
     feedhub,
+    forms,
     integrations,
     messages,
     notifications,
@@ -41,6 +42,8 @@ app.include_router(auth.router)
 app.include_router(clients.router)
 app.include_router(deals.router)
 app.include_router(feedhub.router)
+app.include_router(forms.public_router)
+app.include_router(forms.admin_router)
 app.include_router(tasks.router)
 app.include_router(webhooks.router)
 app.include_router(automations.router)

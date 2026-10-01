@@ -156,6 +156,8 @@ class Integration(Base):
     provider: Mapped[str] = mapped_column(String(32), nullable=False)
     credentials: Mapped[dict] = mapped_column(JSONB, default=dict)  # ENCRYPTED!
     webhook_secret: Mapped[str | None] = mapped_column(Text)  # секрет вебхука (шифровано)
+    status: Mapped[str] = mapped_column(String(20), default="ok")  # ok/error/auth_failed/paused
+    last_error: Mapped[str | None] = mapped_column(Text)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -413,8 +415,41 @@ class ProductOffer(Base):
     seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
 
 
+class SyncState(Base):
+    """Курсор polling-синхронізації на інтеграцію (фаза 3.3)."""
+
+    __tablename__ = "sync_state"
+    __table_args__ = (UniqueConstraint("tenant_id", "integration_id"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    integration_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("integrations.id", ondelete="CASCADE"), nullable=False
+    )
+    cursor: Mapped[str | None] = mapped_column(Text)  # дата/offset, залежить від провайдера
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    consecutive_failures: Mapped[int] = mapped_column(default=0)
+
+
+class LeadForm(Base):
+    """Публічна форма прийому заявок з сайту (honeypot + секрет)."""
+
+    __tablename__ = "lead_forms"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    secret: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
 class PasswordResetToken(Base):
     """Одноразовий токен скидання пароля: зберігаємо ТІЛЬКИ хеш, живе 30 хв."""
+
 
     __tablename__ = "password_reset_tokens"
     id: Mapped[uuid.UUID] = _uuid()

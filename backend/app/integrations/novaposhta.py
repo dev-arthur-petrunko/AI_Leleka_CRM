@@ -34,3 +34,21 @@ class NovaPoshtaAdapter(BaseAdapter):
             r.raise_for_status()
             return r.json()
         return self._call(_do)
+
+    def track(self, ttn: str) -> dict:
+        """Статус ТТН (InternetDocument/getStatusDocuments, developers.novaposhta.ua).
+        Повертає перший документ: {Status, StatusCode, ...}."""
+        if not self.configured:
+            return self.stub("track", {"ttn": ttn})
+
+        def _do():
+            import requests
+            r = requests.post("https://api.novaposhta.ua/v2.0/json/",
+                json={"apiKey": self.creds.get("api_key"), "modelName": "InternetDocument",
+                      "calledMethod": "getStatusDocuments",
+                      "methodProperties": {"Documents": [{"DocumentNumber": ttn}]}},
+                timeout=self.timeout)
+            r.raise_for_status()
+            data = r.json().get("data", [])
+            return data[0] if data else {}
+        return self._call(_do)

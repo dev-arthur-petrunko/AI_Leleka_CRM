@@ -1,0 +1,1 @@
+{"orders": [{"id": 1001, "client_first_name": "Олена", "client_phone": "+380501234567", "price": 1500.0, "status": "pending", "products": [{"name": "Смарт-годинник"}]}, {"id": 1002, "client_first_name": "Тарас", "client_phone": "380501234568", "price": 800.5, "status": "pending", "products": [{"name": "Чохол"}, {"name": "Скло"}]}]}
