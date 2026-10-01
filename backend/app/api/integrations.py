@@ -73,6 +73,10 @@ def list_all(tenant_id: UUID = Depends(get_current_tenant),
 @router.post("")
 def upsert(data: IntegrationIn, user: User = Depends(_admin),
            db: Session = Depends(get_db)):
+    import secrets
+
+    from app.core.security import encrypt_credentials as _enc
+
     if data.provider not in ADAPTERS:
         raise HTTPException(400, f"Unknown provider. Available: {list(ADAPTERS)}")
     _gate(user, db, data.provider)
@@ -86,10 +90,32 @@ def upsert(data: IntegrationIn, user: User = Depends(_admin),
         row.is_active = True
     else:
         row = Integration(tenant_id=user.tenant_id, provider=data.provider,
-                          credentials=enc, settings=data.settings)
+                          credentials=enc, settings=data.settings,
+                          webhook_secret=_enc({"v": secrets.token_urlsafe(32)})["enc"])
         db.add(row)
     db.commit()
-    return {"ok": True, "provider": data.provider, "has_key": bool(data.credentials)}
+    return {"ok": True, "provider": data.provider, "has_key": bool(data.credentials),
+            "webhook_url": f"/webhooks/{data.provider}/{row.id}?secret=... (див. /integrations/{data.provider}/webhook-url)"}
+
+
+@router.get("/{provider}/webhook-url")
+def webhook_url(provider: str, user: User = Depends(_admin),
+                db: Session = Depends(get_db)):
+    """Готовий URL вебхука для копіювання в кабінет провайдера (з секретом)."""
+    from app.core.security import decrypt_credentials as _dec
+
+    row = db.query(Integration).filter(
+        Integration.tenant_id == user.tenant_id,
+        Integration.provider == provider).first()
+    if not row:
+        raise HTTPException(404, "Підключіть провайдера")
+    try:
+        secret = _dec({"enc": row.webhook_secret})["v"] if row.webhook_secret else ""
+    except Exception:
+        secret = ""
+    return {"webhook_url": f"/webhooks/{provider}/{row.id}",
+            "secret": secret,
+            "usage": "заголовок X-Webhook-Secret, або ?secret=, або HMAC X-Signature"}
 
 
 @router.post("/{provider}/test")

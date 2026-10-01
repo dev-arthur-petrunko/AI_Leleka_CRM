@@ -8,8 +8,8 @@ OPEN_OK = ["/health", "/auth/login"]
 # ...а ці — ні (401/405/422, але НЕ 200 з даними)
 REQUIRE_AUTH = ["/auth/me", "/clients", "/deals", "/tasks", "/analytics/kpi",
                 "/automations/logs", "/billing/current", "/integrations",
-                "/feedhub/sources", "/notifications"]
-# /orders и /webhooks/pending добавятся сюда в фазах 2 и 1 (см. AGENT_PLAN)
+                "/feedhub/sources", "/notifications", "/webhooks/pending"]
+# /orders додасться у фазі 2 (див. AGENT_PLAN)
 
 
 @pytest.mark.parametrize("path", OPEN_OK)

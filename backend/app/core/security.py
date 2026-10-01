@@ -23,16 +23,55 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(raw, hashed.encode("utf-8"))
 
 
-def create_access_token(sub: str, tenant_id: str, role: str) -> str:
+def create_access_token(sub: str, tenant_id: str, role: str,
+                        token_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    payload = {"sub": sub, "tenant_id": tenant_id, "role": role, "exp": expire}
+    payload = {"sub": sub, "tenant_id": tenant_id, "role": role,
+               "ver": token_version, "type": "access", "exp": expire}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def decode_token(token: str) -> dict:
-    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+def create_refresh_token(sub: str, tenant_id: str,
+                         token_version: int = 0) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    payload = {"sub": sub, "tenant_id": tenant_id, "ver": token_version,
+               "type": "refresh", "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def decode_token(token: str, expect_type: str | None = None) -> dict:
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    if expect_type and payload.get("type", "access") != expect_type:
+        from jose import JWTError
+        raise JWTError(f"Очікувався токен типу {expect_type}")
+    return payload
+
+
+def verify_signature(secret: str, body: bytes, signature: str | None) -> bool:
+    """HMAC-перевірка підпису вебхука (фаза 1.2)."""
+    import hashlib
+    import hmac
+
+    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature or "")
+
+
+COMMON_PASSWORDS = frozenset(
+    "1234567890 12345678 123456789 password password1 password123 qwerty123 "
+    "letmein admin123 qwertyuiop 11111111 00000000 iloveyou dragon monkey football "
+    "abcdefgh abc123456".split()
+)
+
+
+def check_password_policy(password: str):
+    """Мінімум 10 символів + не зі списку частих. Кидає ValueError з причиною."""
+    if len(password) < 10:
+        raise ValueError("Пароль коротший 10 символів")
+    if password.lower() in COMMON_PASSWORDS:
+        raise ValueError("Пароль занадто поширений")
+    return True
 
 
 def _fernet() -> Fernet:

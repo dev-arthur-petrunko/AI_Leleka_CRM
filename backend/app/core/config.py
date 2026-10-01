@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     # БЕЗ дефолта: без SECRET_KEY додаток не стартує (старе значення скомпрометоване — див. README).
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24h для MVP
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # фаза 1.5: було 24 год
 
     # Fernet-ключ для шифрування credentials в integrations.credentials
     # Згенерувати: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"

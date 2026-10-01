@@ -38,9 +38,28 @@ def _ensure_db():
 
 _ensure_db()
 
+# Тестам потрібен валідний Fernet-ключ (значення з CI/env може бути заглушкою)
+try:
+    from cryptography.fernet import Fernet as _F
+
+    from app.core.config import settings as _s
+
+    _F(_s.CREDENTIALS_KEY.encode())
+except Exception:
+    from cryptography.fernet import Fernet as _F2
+
+    from app.core import config as _cfg
+
+    _cfg.settings.CREDENTIALS_KEY = _F2.generate_key().decode()
+
 from app.core.security import create_access_token  # noqa: E402
 from app.db.session import get_db  # noqa: E402
 from app.models import Tenant, User  # noqa: E402
+
+# Rate-limit вимкнено в тестах (лічильник in-memory спільний на всі тести)
+from app.core.rate import limiter as _limiter  # noqa: E402
+
+_limiter.enabled = False
 
 engine = create_engine(TEST_DB_URL)
 TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)

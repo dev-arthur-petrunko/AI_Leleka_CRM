@@ -6,7 +6,7 @@
 
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -19,6 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> User:
     try:
@@ -38,6 +39,21 @@ def get_current_user(
     )
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
+    if payload.get("type", "access") != "access":
+        raise HTTPException(status_code=401, detail="Потрібен access-токен")
+    if payload.get("ver", 0) != (user.token_version or 0):
+        raise HTTPException(status_code=401, detail="Токен відкликано (зміна пароля)")
+    if user.must_change_password and request.url.path not in (
+            "/auth/change-password", "/auth/me", "/auth/refresh"):
+        raise HTTPException(status_code=403,
+                            detail="Змініть тимчасовий пароль: POST /auth/change-password")
+    return user
+
+
+def enforce_password_change(user: User = Depends(get_current_user)) -> User:
+    """Блокує все крім зміни пароля, поки стоїть must_change_password."""
+    if user.must_change_password:
+        raise HTTPException(status_code=403, detail="Змініть тимчасовий пароль: POST /auth/change-password")
     return user
 
 
