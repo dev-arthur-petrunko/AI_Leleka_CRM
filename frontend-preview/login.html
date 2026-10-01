@@ -45,6 +45,7 @@
     <button class="tab2" id="tabReg" onclick="showTab('register')">Реєстрація</button>
   </div>
   <div id="paneLogin">
+    <input class="field" id="company" placeholder="компанія (slug, якщо email у кількох)">
     <input class="field" id="email" type="email" placeholder="email" value="owner@demo.ua">
     <input class="field" id="pass" type="password" placeholder="пароль" value="123456789">
     <button class="tg-btn" onclick="doLogin()">Увійти</button>
@@ -80,6 +81,10 @@
     }
   }
   if (qs.get('mode') === 'register' || wantPlan !== 'free') showTab('register');
+  try {
+    const saved = localStorage.getItem('leleka-company') || '';
+    if (saved) document.getElementById('company').value = saved;
+  } catch (e) {}
   async function doLogin(){
     const errBox = document.getElementById('err');
     errBox.textContent = '';
@@ -87,9 +92,11 @@
       errBox.textContent = '⛔ Сторінку відкрито як ФАЙЛ — браузер блокує вхід. Відкрийте http://localhost:8080/login.html';
       return;
     }
+    const company = document.getElementById('company').value.trim();
+    try { localStorage.setItem('leleka-company', company); } catch (e) {}
     try {
       await apiLogin(document.getElementById('email').value.trim(),
-                     document.getElementById('pass').value);
+                     document.getElementById('pass').value, company || undefined);
       location = 'dashboard.html';
     } catch(e) { errBox.textContent = 'Не вийшло: ' + e.message + ' (API запущено? Спробуйте http://localhost:8080/login.html)'; }
   }

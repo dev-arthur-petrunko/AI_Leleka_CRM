@@ -176,14 +176,13 @@ const phone=q.get('phone');
 document.getElementById('pSub').textContent=(phone||'+380970000001')+' · form · Менеджер 1 · згода GDPR ✓';})();
 let mChannel='email', realClientId=null, realDeals=[];
 async function initMsg(){
-  try {
-    const list=await api('/clients?q='+encodeURIComponent('Олена')+'&limit=5');
-    if(list&&list.items&&list.items.length){
-      realClientId=list.items[0].id;
-      const dl=await api('/deals?limit=200');
-      realDeals=(dl&&dl.items?dl.items:[]).filter(x=>x.client_id===realClientId);
-    }
-  } catch(e){}
+  const list = await api('/clients?q=' + encodeURIComponent('Олена') + '&limit=5');
+  if (list && list.ok && list.data.items && list.data.items.length) {
+    realClientId = list.data.items[0].id;
+    const dl = await api('/deals?limit=200');
+    const items = dl && dl.ok ? dl.data.items : [];
+    realDeals = items.filter(x => x.client_id === realClientId);
+  }
 }
 function modalDeal(){
   const c=document.getElementById('msgCard').dataset;
@@ -217,8 +216,8 @@ async function openMsg(){
   document.getElementById('msgModal').classList.add('show');
   if(realClientId){
     const r=await api('/clients/'+realClientId+'/message-preview?channel='+msgCtx.channel+(d.id?'&deal_id='+d.id:''));
-    if(r&&r.text){document.getElementById('msgTextM').value=r.text;
-      document.getElementById('mStatusM').textContent=r.ai_used?'🤖 AI-текст під угоду':'📝 Шаблон (нема AI-ключа)';}
+    if(r&&r.ok&&r.data&&r.data.text){document.getElementById('msgTextM').value=r.data.text;
+      document.getElementById('mStatusM').textContent=r.data.ai_used?'🤖 AI-текст під угоду':'📝 Шаблон (нема AI-ключа)';}
   }
 }
 let msgCtx=null;
@@ -229,7 +228,8 @@ async function sendMsgModal(){
     const r=await api('/clients/'+realClientId+'/message',{method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({channel:msgCtx.channel,deal_id:msgCtx.dealId||null})});
-    if(r){toast(r.stub?'📤 Надіслано (stub — підключіть '+msgCtx.channel+' в інтеграціях)':'✅ Надіслано через '+msgCtx.channel);
+    if(r&&r.ok){const d2=r.data;
+      toast(d2.stub?'📤 Надіслано (stub — підключіть '+msgCtx.channel+' в інтеграціях)':'✅ Надіслано через '+msgCtx.channel);
       closeMsgModal();return;}
     toast('Не вдалося (можливо 422 — нема контакту)');return;
   }

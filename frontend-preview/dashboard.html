@@ -143,7 +143,10 @@
   // Живі дані: якщо є токен (login.html) і API відповідає — підміняємо мок.
   // Нема токена / офлайн / Free+402 → тихо лишається мок.
   let liveDashboard = null;
-  const liveReady = api('/analytics/dashboard').then(d => { liveDashboard = d; applyLiveKpi(d); });
+  const liveReady = api('/analytics/dashboard').then(r => {
+    if (r && r.ok) { liveDashboard = r.data; applyLiveKpi(r.data); }
+    return liveDashboard;
+  });
   function fmt(n) { return Math.round(n).toLocaleString('uk-UA'); }
   function applyLiveKpi(d) {
     if (!d || !d.kpi) return;

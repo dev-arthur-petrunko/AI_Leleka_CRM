@@ -139,17 +139,18 @@
     const r = await api('/feedhub/sources', { method:'POST',
       headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     closeSrcModal();
-    if (r) { toast('✅ Джерело додано, запускаю…'); runSource(r.id); loadAll(); }
+    if (r && r.ok) { toast('✅ Джерело додано, запускаю…'); runSource(r.data.id); loadAll(); }
     else toast('Демо-режим: увійдіть через 🔑 — джерело збережеться по-справжньому');
   }
   async function runSource(id){
     const r = await api('/feedhub/sources/' + id + '/run', { method:'POST' });
-    toast(r ? `Готово: +${r.added} ~${r.updated} −${r.removed} (${r.status})` : 'Демо: у проді тут реальний запуск');
+    const d = r && r.ok ? r.data : null;
+    toast(d ? `Готово: +${d.added} ~${d.updated} −${d.removed} (${d.status})` : 'Демо: у проді тут реальний запуск');
     loadAll();
   }
   async function delSource(id){
     const r = await api('/feedhub/sources/' + id, { method:'DELETE' });
-    toast(r ? 'Видалено' : 'Демо-режим'); loadAll();
+    toast(r && r.ok ? 'Видалено' : 'Демо-режим'); loadAll();
   }
   async function exportFeed(){
     const t = (typeof apiToken === 'function') ? apiToken() : null;
@@ -207,14 +208,12 @@
     }).join('');
   }
   async function loadAll(){
-    try {
-      const [s, r, p] = await Promise.all([
-        api('/feedhub/sources'), api('/feedhub/runs?limit=10'), api('/feedhub/products?limit=100')]);
-      if (s) live.sources = s;
-      if (r) live.runs = r;
-      if (p) live.products = p.items || p;
-      if (s || r || p) toast('🔗 Живі дані Feed Hub');
-    } catch(e) {}
+    const [s, r, p] = await Promise.all([
+      api('/feedhub/sources'), api('/feedhub/runs?limit=10'), api('/feedhub/products?limit=100')]);
+    if (s && s.ok) live.sources = s.data;
+    if (r && r.ok) live.runs = r.data;
+    if (p && p.ok) live.products = p.data.items || p.data;
+    if ((s && s.ok) || (r && r.ok) || (p && p.ok)) toast('🔗 Живі дані Feed Hub');
     renderSources(); renderRuns(); renderProducts();
   }
   loadAll();
