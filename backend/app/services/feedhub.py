@@ -302,7 +302,6 @@ def merge_source(db: Session, tenant_id: UUID, source: FeedSource,
 
 def run_source(db: Session, source_id: UUID) -> dict:
     """Один повний цикл: fetch → parse → merge → FeedRun + інбокс-алерт при помилці."""
-    from app.core.security import decrypt_credentials
     from app.services import notify as notify_queue
 
     source = db.query(FeedSource).filter(FeedSource.id == source_id).first()

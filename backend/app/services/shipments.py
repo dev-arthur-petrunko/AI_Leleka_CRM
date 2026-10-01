@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Трекінг відправлень НП (фаза 3.7): статуси → delivered/returned + автоматизації."""
 
 from datetime import datetime, timezone

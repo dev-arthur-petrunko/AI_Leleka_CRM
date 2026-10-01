@@ -171,3 +171,26 @@ def delete_client(client_id: UUID, request: Request,
     _audit(db, user, str(c.id), "delete", request=request)
     db.commit()
     return {"ok": True}
+
+
+@router.delete("/{client_id}/erase")
+def erase_client(client_id: UUID, request: Request,
+                 user: User = Depends(require_role("owner", "admin")),
+                 db: Session = Depends(get_db)):
+    """GDPR-видалення (фаза 8.2): знеособлення замість soft-delete."""
+    from datetime import datetime, timezone
+    c = db.query(Client).filter(
+        Client.id == client_id, Client.tenant_id == user.tenant_id
+    ).first()
+    if not c:
+        raise HTTPException(404, "Not found")
+    c.name, c.first_name, c.last_name = "Видалений", None, None
+    c.phone, c.email = None, None
+    c.telegram_chat_id, c.viber_id = None, None
+    c.notes, c.consents, c.custom = "", {}, {}
+    c.segment = "lost"
+    c.deleted_at = datetime.now(timezone.utc)
+    _audit(db, user, str(c.id), "delete",
+           new={"erased": True}, request=request)
+    db.commit()
+    return {"ok": True, "erased": str(c.id)}

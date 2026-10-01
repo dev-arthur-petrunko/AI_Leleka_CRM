@@ -18,7 +18,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models import Client, Deal, Task
+from app.models import Client, Deal
 
 STAGE_WEIGHT = {"new": 20, "contacted": 40, "negotiation": 70, "won": 100, "lost": 0}
 
@@ -61,61 +61,76 @@ def forecast_revenue(deals_won_by_month: list[dict]) -> dict:
 
 
 def churn_candidates(db: Session, tenant_id: UUID, idle_days: int = 30) -> list[dict]:
-    """Клієнти без активності N днів — ризик відтоку."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=idle_days)
-    # остання активність клієнта = max(last_activity_at його угод)
-    deals = db.query(Deal).filter(Deal.tenant_id == tenant_id).all()
-    last_by_client: dict[str, datetime] = {}
-    for d in deals:
-        key = str(d.client_id)
-        if key not in last_by_client or d.last_activity_at > last_by_client[key]:
-            last_by_client[key] = d.last_activity_at
-    out = []
-    for cid, last in last_by_client.items():
-        # ensure tz-aware compare
-        last_aware = last if last.tzinfo else last.replace(tzinfo=timezone.utc)
-        if last_aware < cutoff:
-            client = db.query(Client).filter(
-                Client.id == cid, Client.tenant_id == tenant_id).first()
-            if client and client.segment != "lost":
-                out.append({"client_id": cid, "name": client.name,
-                            "days_idle": (datetime.now(timezone.utc) - last_aware).days,
-                            "segment": client.segment})
-    return sorted(out, key=lambda x: x["days_idle"], reverse=True)[:20]
+    """Клієнти без активності N днів — ОДИН SQL-запит замість N+1 (фаза 6.1)."""
+    from sqlalchemy import text
+
+    rows = db.execute(text(
+        "SELECT c.id, c.name, c.segment, MAX(d.last_activity_at) AS last_act "
+        "FROM clients c JOIN deals d ON d.client_id = c.id AND d.tenant_id = c.tenant_id "
+        "WHERE c.tenant_id = :t AND c.segment <> 'lost' AND c.deleted_at IS NULL "
+        "GROUP BY c.id, c.name, c.segment "
+        "HAVING MAX(d.last_activity_at) < now() - make_interval(days => :days) "
+        "ORDER BY last_act LIMIT 20"),
+        {"t": str(tenant_id), "days": idle_days}).fetchall()
+    now = datetime.now(timezone.utc)
+    return [{"client_id": str(r[0]), "name": r[1], "segment": r[2],
+             "days_idle": max(0, (now - r[3].replace(tzinfo=timezone.utc)).days
+                              if r[3].tzinfo is None else (now - r[3]).days)}
+            for r in rows]
 
 
 def next_best_actions(db: Session, tenant_id: UUID) -> list[dict]:
-    """Черга менеджеру: спочатку завислі, потім гарячі без задач."""
+    """Черга менеджеру: завислі + переговори без задач (2 запити замість 3 таблиць цілком)."""
+    from sqlalchemy import text
+
     cutoff_3d = datetime.now(timezone.utc) - timedelta(days=3)
-    stuck = db.query(Deal).filter(
-        Deal.tenant_id == tenant_id,
-        Deal.stage.notin_(["won", "lost"]),
-        Deal.last_activity_at < cutoff_3d).limit(10).all()
-    actions = [{"priority": 1, "action": "call_now", "deal_id": str(d.id),
-                "reason": f"зависла { _days_since(d.last_activity_at)} дн., stage={d.stage}"}
-               for d in stuck]
-    # гарячі без відкритих задач
-    open_deal_ids = {t.deal_id for t in db.query(Task).filter(
-        Task.tenant_id == tenant_id, Task.status == "open").all() if t.deal_id}
-    hot = [d for d in db.query(Deal).filter(
-        Deal.tenant_id == tenant_id, Deal.stage == "negotiation").limit(20).all()
-        if d.id not in open_deal_ids][:5]
-    actions += [{"priority": 2, "action": "create_followup", "deal_id": str(d.id),
-                 "reason": "переговори без відкритої задачі"} for d in hot]
+    stuck = db.execute(text(
+        "SELECT id, stage, last_activity_at FROM deals WHERE tenant_id = :t "
+        "AND stage NOT IN ('won','lost') AND last_activity_at < :cut "
+        "ORDER BY last_activity_at LIMIT 10"),
+        {"t": str(tenant_id), "cut": cutoff_3d}).fetchall()
+    actions = [{"priority": 1, "action": "call_now", "deal_id": str(r[0]),
+                "reason": f"зависла {_days_since(r[2])} дн., stage={r[1]}"}
+               for r in stuck]
+    hot = db.execute(text(
+        "SELECT d.id FROM deals d WHERE d.tenant_id = :t AND d.stage = 'negotiation' "
+        "AND NOT EXISTS (SELECT 1 FROM tasks t WHERE t.deal_id = d.id "
+        "AND t.tenant_id = :t AND t.status = 'open') LIMIT 5"),
+        {"t": str(tenant_id)}).fetchall()
+    actions += [{"priority": 2, "action": "create_followup", "deal_id": str(r[0]),
+                 "reason": "переговори без відкритої задачі"} for r in hot]
     return actions
 
 
 def ai_text_insight(anonymized: list[dict]) -> dict:
-    """PRO-рівень: сюди підключається Claude/OpenAI API.
+    """PRO: реальний Claude, якщо є ANTHROPIC_API_KEY; інакше — шаблон.
+    PII ніколи не відправляється (тільки агрегати, pii_sent=False)."""
+    import os
 
-    MVP повертає шаблонний insight без зовнішніх викликів.
-    Прод: requests.post(CLAUDE_API, json={aggregates: anonymized})
-    """
     total = sum(d["amount"] for d in anonymized)
     n = len(anonymized)
-    return {"summary": f"Угод в роботі: {n}, сума пайплайна: {total:.0f} грн. "
-                       f"Підключіть ANTHROPIC_API_KEY для текстового розбору Claude.",
-            "pii_sent": False}
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
+    model = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5")
+    if not key:
+        return {"summary": f"Угод в роботі: {n}, сума пайплайна: {total:.0f} грн. "
+                           f"Підключіть ANTHROPIC_API_KEY для текстового розбору Claude.",
+                "pii_sent": False, "ai_used": False}
+    try:
+        import requests
+        r = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": key, "anthropic-version": "2023-06-01",
+                     "content-type": "application/json"},
+            json={"model": model, "max_tokens": 300, "messages": [{
+                "role": "user",
+                "content": f"Коротко (3 речення, українською) проаналізуй воронку: угод {n}, "
+                           f"сума {total:.0f} грн. Дані знеособлені."}]},
+            timeout=20)
+        r.raise_for_status()
+        return {"summary": r.json()["content"][0]["text"],
+                "pii_sent": False, "ai_used": True, "model": model}
+    except Exception as e:  # noqa: BLE001
+        return {"summary": f"Угод: {n}, сума: {total:.0f} грн. (AI недоступний: {e})",
+                "pii_sent": False, "ai_used": False}
 
 
 def _days_since(dt: datetime | None) -> int:

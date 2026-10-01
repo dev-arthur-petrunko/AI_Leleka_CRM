@@ -32,9 +32,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: pip install -r backend/requirements.txt
-      - run: pip install ruff gitleaks 2>/dev/null || pip install ruff
+      - run: pip install ruff pip-audit
       - run: gitleaks detect --source . --no-git || true
       - run: ruff check backend || true
+      - run: pip-audit -r backend/requirements.txt || true
       - run: python -m compileall backend/app
       - run: cd backend && alembic upgrade head
       - run: cd backend && pytest -q

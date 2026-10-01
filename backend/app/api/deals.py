@@ -83,6 +83,9 @@ def move_stage(deal_id: UUID, stage: str,
     if not d:
         raise HTTPException(404, "Not found")
     d.stage = stage
+    # фаза 6.3: ймовірність синхронізується зі стадією воронки
+    d.probability = {"new": 10, "contacted": 30, "negotiation": 60,
+                     "won": 100, "lost": 0}.get(stage, d.probability or 0)
     from datetime import datetime, timezone
     d.last_activity_at = datetime.now(timezone.utc)
     if stage == "won":

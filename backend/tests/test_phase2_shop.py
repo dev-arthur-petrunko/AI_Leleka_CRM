@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """Фаза 2: телефони, ідемпотентність імпорту, ізоляція замовлень."""
 
 import uuid
 
 import pytest
-
 from app.core.phones import normalize_phone
+
 from tests.conftest import auth_headers, make_tenant, make_user
 
 

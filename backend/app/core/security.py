@@ -59,9 +59,7 @@ def verify_signature(secret: str, body: bytes, signature: str | None) -> bool:
 
 
 COMMON_PASSWORDS = frozenset(
-    "1234567890 12345678 123456789 password password1 password123 qwerty123 "
-    "letmein admin123 qwertyuiop 11111111 00000000 iloveyou dragon monkey football "
-    "abcdefgh abc123456".split()
+    ["1234567890", "12345678", "123456789", "password", "password1", "password123", "qwerty123", "letmein", "admin123", "qwertyuiop", "11111111", "00000000", "iloveyou", "dragon", "monkey", "football", "abcdefgh", "abc123456"]
 )
 
 

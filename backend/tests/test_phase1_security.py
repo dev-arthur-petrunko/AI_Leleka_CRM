@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Безпека фази 1: вебхуки, логін з компанією, паролі, 2FA, відкликання."""
 
 import hashlib
@@ -10,7 +9,6 @@ from tests.conftest import auth_headers, make_tenant, make_user
 
 
 def test_pending_requires_owner(client, db):
-    from app.models import User
 
     t = make_tenant(db)
     mgr = make_user(db, t, role="manager")
@@ -23,7 +21,7 @@ def test_pending_requires_owner(client, db):
 
 
 def test_signed_webhook_flow(client, db):
-    from app.core.security import decrypt_credentials, encrypt_credentials
+    from app.core.security import encrypt_credentials
     from app.models import Integration
 
     t = make_tenant(db)

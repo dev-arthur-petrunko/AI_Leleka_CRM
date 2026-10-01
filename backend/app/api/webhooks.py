@@ -14,7 +14,7 @@ import hashlib
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_user, require_role
+from app.core.deps import require_role
 from app.core.rate import limiter
 from app.core.security import decrypt_credentials, verify_signature
 from app.db.session import get_db

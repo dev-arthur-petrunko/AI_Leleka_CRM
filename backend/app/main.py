@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -13,10 +13,12 @@ from app.api import (
     deals,
     feedhub,
     forms,
+    inbox,
     integrations,
     messages,
     notifications,
     orders,
+    shop,
     tasks,
     webhooks,
 )
@@ -50,9 +52,30 @@ app.include_router(automations.router)
 app.include_router(analytics.router)
 app.include_router(billing.router)
 app.include_router(integrations.router)
+app.include_router(inbox.router)
 app.include_router(messages.router)
 app.include_router(notifications.router)
 app.include_router(orders.router)
+app.include_router(shop.router)
+
+
+import os
+
+if os.environ.get("SENTRY_DSN"):
+    import sentry_sdk
+
+    sentry_sdk.init(dsn=os.environ["SENTRY_DSN"], traces_sample_rate=0.1)
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    """X-Request-ID на кожен запит (фаза 8.4)."""
+    import uuid
+
+    rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = rid
+    return response
 
 
 @app.on_event("startup")

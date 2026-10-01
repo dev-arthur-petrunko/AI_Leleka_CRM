@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Публічні форми заявок з сайту (фаза 3.8): секрет форми + honeypot + rate-limit."""
 
 import secrets

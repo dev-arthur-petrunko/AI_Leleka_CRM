@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_tenant, require_plan_feature, require_role
+from app.core.deps import get_current_tenant, require_role
 from app.core.security import decrypt_credentials, encrypt_credentials
 from app.db.session import get_db
 from app.integrations.checkbox import CheckboxAdapter
@@ -20,7 +20,7 @@ from app.integrations.marketplace import PromAdapter, RozetkaAdapter, normalize_
 from app.integrations.novaposhta import NovaPoshtaAdapter
 from app.integrations.payments import LiqPayAdapter, MonoAdapter
 from app.integrations.sms import SendPulseAdapter, TurboSmsAdapter
-from app.models import Client, Deal, Integration, Tenant, User
+from app.models import Integration, Tenant, User
 from app.services.billing import current_plan
 
 _admin = require_role("owner", "admin")

@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
 """Ізоляція тенантів (фаза 0.3): B не бачить і не чіпає обʼєкти A."""
 
-from tests.conftest import auth_headers, make_tenant, make_user
 from app.models import Client, Deal, Integration, Task
+
+from tests.conftest import auth_headers, make_tenant, make_user
 
 
 def _seed(db):

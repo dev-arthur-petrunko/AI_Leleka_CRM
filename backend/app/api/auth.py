@@ -141,8 +141,9 @@ class RefreshIn(BaseModel):
 @router.post("/refresh", response_model=TokenOut)
 def refresh(data: RefreshIn, db: Session = Depends(get_db)):
     """Обмін refresh-токена (7 днів) на нову пару access+refresh."""
-    from jose import JWTError
     from uuid import UUID
+
+    from jose import JWTError
 
     try:
         payload = decode_token(data.refresh_token, expect_type="refresh")
@@ -285,6 +286,73 @@ def invite(request: Request, data: InviteIn,
     db.commit()
     return {"ok": True, "email": data.email, "role": data.role,
             "temp_password": temp_password}
+
+
+class TelegramIn(BaseModel):
+    init_data: str
+
+
+@router.post("/telegram")
+def telegram_login(data: TelegramIn, db: Session = Depends(get_db)):
+    """Вхід у Mini App в один клік: перевірка HMAC initData + свіжість auth_date."""
+    import os
+    import time
+
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    if not bot_token:
+        raise HTTPException(501, "Telegram-вхід не налаштовано (TELEGRAM_BOT_TOKEN)")
+    try:
+        import hashlib
+        import hmac as _hmac
+        from urllib.parse import parse_qsl
+
+        pairs = dict(parse_qsl(data.init_data, keep_blank_values=True))
+        check_hash = pairs.pop("hash", "")
+        check = "\n".join(f"{k}={pairs[k]}" for k in sorted(pairs))
+        secret = hashlib.sha256(bot_token.encode()).digest()
+        calc = _hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+        if not _hmac.compare_digest(calc, check_hash):
+            raise HTTPException(401, "Bad initData signature")
+        if time.time() - int(pairs.get("auth_date", 0)) > 3600:
+            raise HTTPException(401, "initData прострочено")
+        import json
+        tg_user = json.loads(pairs.get("user", "{}"))
+        tg_id = str(tg_user.get("id", ""))
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(401, "Bad initData")
+    user = db.query(User).filter(User.telegram_id == tg_id).first() if tg_id else None
+    if not user:
+        raise HTTPException(404, "Привʼяжіть Telegram у налаштуваннях (POST /auth/telegram/link)")
+    return _tokens(user)
+
+
+@router.post("/telegram/link")
+def telegram_link(data: TelegramIn, user: User = Depends(get_current_user),
+                  db: Session = Depends(get_db)):
+    """Привʼязка: залогінений користувач підтверджує свій Telegram через initData."""
+    import hashlib
+    import hmac as _hmac
+    import json
+    import os
+    import time
+    from urllib.parse import parse_qsl
+
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    pairs = dict(parse_qsl(data.init_data, keep_blank_values=True))
+    check_hash = pairs.pop("hash", "")
+    check = "\n".join(f"{k}={pairs[k]}" for k in sorted(pairs))
+    secret = hashlib.sha256(bot_token.encode()).digest()
+    calc = _hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+    if not bot_token or not _hmac.compare_digest(calc, check_hash):
+        raise HTTPException(401, "Bad initData")
+    if time.time() - int(pairs.get("auth_date", 0)) > 3600:
+        raise HTTPException(401, "initData прострочено")
+    tg_user = json.loads(pairs.get("user", "{}"))
+    user.telegram_id = str(tg_user.get("id", ""))
+    db.commit()
+    return {"ok": True, "telegram_id": user.telegram_id}
 
 
 @router.get("/me")

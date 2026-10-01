@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Ще</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; display:flex; align-items:center; gap:10px; }
+  header h1 { font-size:19px; }
+  main { padding:16px; max-width:700px; margin:0 auto; }
+  .card { background:var(--tg-card); border-radius:12px; padding:6px 16px; }
+  .row { display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--tg-sep);
+    font-size:15px; text-decoration:none; color:var(--tg-text); }
+  .row:last-child { border:none; }
+  .row .go { margin-left:auto; color:var(--tg-hint); }
+  .tabbar { position:fixed; bottom:0; left:0; right:0; background:var(--tg-card);
+    border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
+  .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); text-decoration:none; }
+  .tab .ico { font-size:22px; display:block; } .tab.active { color:var(--tg-link); font-weight:600; }
+</style>
+</head>
+<body>
+<header><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>⚙️ Ще</h1></header>
+<main>
+  <div class="card" id="menu"></div>
+</main>
+<nav class="tabbar" id="tabs">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="orders.html"><span class="ico">🧾</span>Замовлення</a>
+  <a class="tab" href="inbox.html"><span class="ico">💬</span>Вхідні</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab active" href="more.html"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  const ITEMS = [
+    ['🤝', 'Угоди (канбан)', 'deals.html'],
+    ['📡', 'Feed Hub (товари)', 'feedhub.html'],
+    ['✅', 'Завдання', 'tasks.html'],
+    ['💳', 'Тариф', 'billing.html'],
+    ['🔌', 'Інтеграції', 'integrations.html'],
+    ['🪶', 'Про нас', 'about.html'],
+  ];
+  document.getElementById('menu').innerHTML = ITEMS.map(([ico, label, href]) =>
+    `<a class="row" href="${href}"><span>${ico}</span>${label}<span class="go">›</span></a>`).join('');
+</script>
+</body>
+</html>

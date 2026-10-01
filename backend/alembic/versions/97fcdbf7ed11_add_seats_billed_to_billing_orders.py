@@ -5,10 +5,8 @@ Revises: bc0ace015620
 Create Date: 2026-09-26 15:19:37.987297
 
 """
-from alembic import op
 import sqlalchemy as sa
-
-
+from alembic import op
 
 revision = '97fcdbf7ed11'
 down_revision = 'bc0ace015620'

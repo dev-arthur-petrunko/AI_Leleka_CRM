@@ -58,6 +58,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     email_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    telegram_id: Mapped[str | None] = mapped_column(Text)  # привʼязка для Mini App входу
     token_version: Mapped[int] = mapped_column(default=0)  # відкликання токенів
     totp_secret: Mapped[str | None] = mapped_column(Text)  # 2FA (зашифровано)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -85,6 +86,7 @@ class Client(Base):
     segment: Mapped[str] = mapped_column(String(20), default="new")
     notes: Mapped[str] = mapped_column(Text, default="")
     custom: Mapped[dict] = mapped_column(JSONB, default=dict)  # кастомні поля (фаза 2.5)
+    consents: Mapped[dict] = mapped_column(JSONB, default=dict)  # {channel: {granted_at, source}}
     gdpr_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
@@ -650,3 +652,58 @@ class PipelineStage(Base):
 Index("ix_orders_tenant_status", Order.tenant_id, Order.status)
 Index("ix_orders_tenant_placed", Order.tenant_id, Order.placed_at)
 Index("ix_orders_tenant_client", Order.tenant_id, Order.client_id)
+
+
+class Conversation(Base):
+    """Діалог з клієнтом в одному каналі (фаза 5.1)."""
+
+    __tablename__ = "conversations"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    client_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id", ondelete="SET NULL")
+    )
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class Message(Base):
+    __tablename__ = "messages"
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False
+    )
+    direction: Mapped[str] = mapped_column(String(8), nullable=False)  # in/out
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    external_id: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="delivered")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
+
+
+class MessageTemplate(Base):
+    """Шаблони з підстановками {{client.first_name}} {{order.number}} {{shipment.ttn}}."""
+
+    __tablename__ = "message_templates"
+    __table_args__ = (UniqueConstraint("tenant_id", "name"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+Index("ix_conv_tenant_client", Conversation.tenant_id, Conversation.client_id)
+Index("ix_msg_conv", Message.conversation_id, Message.created_at)

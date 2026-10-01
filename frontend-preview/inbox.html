@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Leleka CRM — Вхідні</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="assets/api.js"></script>
+<style>
+  :root { --tg-bg:#e7ebef; --tg-card:#fff; --tg-text:#17212b; --tg-hint:#707579;
+    --tg-link:#3390ec; --tg-btn:#3390ec; --tg-btn-text:#fff; --tg-header:#17212b; --tg-sep:#dfe2e5; }
+  @media (prefers-color-scheme: dark) { :root { --tg-bg:#0e1621; --tg-card:#17212b; --tg-text:#fff;
+    --tg-hint:#7f91a4; --tg-link:#6ab2f2; --tg-btn:#2b5278; --tg-header:#17212b; --tg-sep:#242f3d; } }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Roboto',sans-serif; background:var(--tg-bg); color:var(--tg-text); padding-bottom:76px; }
+  header { background:var(--tg-header); color:#fff; padding:16px 24px; display:flex; align-items:center; gap:10px; }
+  header h1 { font-size:19px; }
+  main { padding:16px; max-width:700px; margin:0 auto; display:flex; gap:12px; }
+  .list { flex:1; }
+  .card { background:var(--tg-card); border-radius:12px; padding:6px 16px; }
+  .dlg { padding:12px 0; border-bottom:1px solid var(--tg-sep); cursor:pointer; font-size:14.5px; }
+  .dlg:last-child { border:none; } .dlg.active { background:color-mix(in srgb, var(--tg-link) 8%, transparent); }
+  .dlg .meta { font-size:12px; color:var(--tg-hint); }
+  .thread { flex:1.4; display:flex; flex-direction:column; }
+  .bubble { max-width:85%; padding:8px 12px; border-radius:14px; font-size:14px; margin-bottom:6px; background:var(--tg-card); }
+  .bubble.out { margin-left:auto; background:#d7e9f7; }
+  @media (prefers-color-scheme: dark) { .bubble.out { background:#2b5278; } }
+  .composer { display:flex; gap:8px; margin-top:8px; }
+  .composer input { flex:1; border:1px solid var(--tg-sep); border-radius:10px; background:var(--tg-card);
+    color:var(--tg-text); padding:10px 12px; outline:none; font-size:14px; }
+  .tg-btn { border:none; border-radius:10px; background:var(--tg-btn); color:var(--tg-btn-text);
+    font-size:14px; font-weight:600; padding:10px 16px; cursor:pointer; }
+  .empty { text-align:center; color:var(--tg-hint); padding:26px; font-size:14px; line-height:1.8; }
+  @media(max-width:640px){ main{flex-direction:column} }
+  .tabbar { position:fixed; bottom:0; left:0; right:0; background:var(--tg-card);
+    border-top:1px solid var(--tg-sep); display:flex; padding-bottom:env(safe-area-inset-bottom); }
+  .tab { flex:1; text-align:center; padding:8px 0 9px; font-size:10.5px; color:var(--tg-hint); text-decoration:none; }
+  .tab .ico { font-size:22px; display:block; } .tab.active { color:var(--tg-link); font-weight:600; }
+</style>
+</head>
+<body>
+<header><button onclick="history.length>1?history.back():location='dashboard.html'" style="background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:50%;width:32px;height:32px;font-size:16px;cursor:pointer" title="Назад">←</button><h1>💬 Вхідні</h1></header>
+<main>
+  <div class="list card" id="dlgList"><div class="empty">завантаження…</div></div>
+  <div class="thread">
+    <div class="card" id="thread" style="flex:1"><div class="empty">Оберіть діалог ←</div></div>
+    <div class="composer"><input id="replyText" placeholder="Відповідь…"><button class="tg-btn" onclick="sendReply()">➤</button></div>
+  </div>
+</main>
+<nav class="tabbar" id="tabs">
+  <a class="tab" href="dashboard.html"><span class="ico">📊</span>Дашборд</a>
+  <a class="tab" href="orders.html"><span class="ico">🧾</span>Замовлення</a>
+  <a class="tab active" href="inbox.html"><span class="ico">💬</span>Вхідні</a>
+  <a class="tab" href="clients.html"><span class="ico">👥</span>Клієнти</a>
+  <a class="tab" href="more.html"><span class="ico">⚙️</span>Ще</a>
+</nav>
+<script>
+  (function(){const tg=window.Telegram&&window.Telegram.WebApp;if(!tg)return;tg.ready();tg.expand();})();
+  let cur = null;
+  function toast(m){ const t=document.createElement('div'); t.textContent=m;
+    t.style.cssText='position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:#17212b;color:#fff;padding:10px 18px;border-radius:10px;z-index:50';
+    document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+  async function load(){
+    const r = await api('/inbox/conversations?limit=30');
+    const box = document.getElementById('dlgList');
+    if (!r || !r.ok) {
+      box.innerHTML = '<div class="empty">Немає звʼязку з сервером.<br><a href="#" onclick="load();return false" style="color:var(--tg-link)">Повторити</a><br><br>Підключіть Telegram-бота в <a href="integrations.html" style="color:var(--tg-link)">інтеграціях</a>.</div>';
+      return;
+    }
+    if (!r.data.length) {
+      box.innerHTML = '<div class="empty">Порожньо. Діалоги зʼявляться, коли клієнти напишуть боту.<br><a href="integrations.html" style="color:var(--tg-link)">Підключити Telegram →</a></div>';
+      return;
+    }
+    box.innerHTML = '';
+    r.data.forEach(c => {
+      const d = document.createElement('div'); d.className = 'dlg' + (cur === c.id ? ' active' : '');
+      d.innerHTML = `<b>${c.channel}</b><div class="meta">${c.status} · ${c.last_message_at || ''}</div>`;
+      d.onclick = () => openThread(c.id);
+      box.appendChild(d);
+    });
+  }
+  async function openThread(id){
+    cur = id;
+    const r = await api('/inbox/conversations/' + id);
+    if (!r || !r.ok) return;
+    document.getElementById('thread').innerHTML = r.data.messages.map(m =>
+      `<div class="bubble${m.direction === 'out' ? ' out' : ''}">${m.body}</div>`).join('') || '<div class="empty">Порожньо</div>';
+    load();
+  }
+  async function sendReply(){
+    const v = document.getElementById('replyText').value.trim();
+    if (!v || !cur) return;
+    const r = await api('/inbox/conversations/' + cur + '/reply', { method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({ body: v }) });
+    if (r && r.ok) { document.getElementById('replyText').value = ''; openThread(cur); }
+    else toast('Не надіслано (перевірте підключення бота)');
+  }
+  load();
+</script>
+</body>
+</html>

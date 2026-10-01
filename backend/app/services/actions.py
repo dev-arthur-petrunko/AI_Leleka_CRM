@@ -15,7 +15,15 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.security import decrypt_credentials
-from app.models import AutomationRule, Client, Deal, Integration, Interaction, Task, User
+from app.models import (
+    AutomationRule,
+    Client,
+    Deal,
+    Integration,
+    Interaction,
+    Task,
+    User,
+)
 from app.services import notify as notify_queue
 
 

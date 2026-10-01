@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Leleka CRM — Конфіденційність та оферта</title>
+<style>
+  body { font-family:-apple-system,sans-serif; max-width:720px; margin:0 auto; padding:24px 16px;
+    background:#e7ebef; color:#17212b; line-height:1.6; }
+  @media (prefers-color-scheme: dark) { body { background:#0e1621; color:#fff; } }
+  .card { background:#fff; border-radius:12px; padding:20px; margin-bottom:14px; }
+  @media (prefers-color-scheme: dark) { .card { background:#17212b; } }
+</style>
+</head>
+<body>
+<h1>🪶 AI Leleka CRM — право і дані</h1>
+<div class="card"><h2>Конфіденційність</h2>
+<p>Ми обробляємо персональні дані ваших клієнтів лише як оператор за вашим дорученням
+(GDPR, Закон України «Про захист персональних даних»). API-ключі шифруються (Fernet),
+паролі — bcrypt, у зовнішній AI йдуть лише знеособлені агрегати.</p></div>
+<div class="card"><h2>Ваші права</h2>
+<p>Експорт даних: <b>GET /deals/export</b>, <b>GET /orders/export</b>.
+Видалення клієнта: <b>DELETE /clients/{id}/erase</b> — знеособлення (імʼя, контакти стираються).
+Видалення акаунта компанії — за запитом у підтримку.</p></div>
+<div class="card"><h2>Договір-оферта (коротко)</h2>
+<p>Free — безкоштовно. Pro/Team — щомісяця за місце, оплата LiqPay/Mono; план вмикається
+лише після підтвердженої оплати (вебхук). Даунгрейд — у будь-який момент, гроші за
+поточний місяць не повертаються. SLA бети: без гарантій аптайму.</p></div>
+<p><a href="about.html">← На головну</a></p>
+</body>
+</html>

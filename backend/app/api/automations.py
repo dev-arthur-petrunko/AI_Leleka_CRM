@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.deps import get_current_tenant, get_current_user, require_role
+from app.core.deps import get_current_tenant, require_role
 from app.db.session import get_db
 from app.models import AutomationLog, AutomationRule, User
 

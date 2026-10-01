@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Polling-синхронізація з курсором (фаза 3.3): стани, рух курсора після успіху, 429."""
 
 from datetime import datetime, timezone
@@ -19,7 +18,6 @@ def get_state(db: Session, row: Integration) -> SyncState:
 
 
 def _mark_ok(db: Session, row, st) -> None:
-    from datetime import datetime, timezone
 
     st.cursor = datetime.now(timezone.utc).isoformat()
     st.last_success_at = datetime.now(timezone.utc)
@@ -32,9 +30,12 @@ def _mark_ok(db: Session, row, st) -> None:
 
 def sync_integration(db: Session, integration_id) -> dict:
     """Одна ітерація: pull → upsert → курсор. Повтор безпечний (ідемпотентність)."""
-    from app.integrations.marketplace import normalize_order
-    from app.integrations.marketplace import PromAdapter, RozetkaAdapter
     from app.core.security import decrypt_credentials
+    from app.integrations.marketplace import (
+        PromAdapter,
+        RozetkaAdapter,
+        normalize_order,
+    )
     from app.services.orders import upsert_order
 
     row = db.query(Integration).filter(Integration.id == integration_id).first()

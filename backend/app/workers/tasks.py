@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Періодичні задачі (фаза 3): вебхуки, sync, трекінг НП, stuck, білінг, фіди."""
 
 from datetime import datetime, timedelta, timezone
@@ -96,8 +95,8 @@ def run_feed_scheduler() -> list:
 
 @celery.task(name="leleka.run_np_poll")
 def run_np_poll() -> dict:
-    from app.services.shipments import poll_shipments
     from app.db.session import SessionLocal
+    from app.services.shipments import poll_shipments
 
     db = SessionLocal()
     try:

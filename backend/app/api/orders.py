@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """API замовлень + теги/кастом/воронки (фаза 2.4–2.5)."""
 
 from datetime import datetime
@@ -10,8 +9,20 @@ from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_tenant, require_role
 from app.db.session import get_db
-from app.models import (CustomFieldDef, EntityTag, Order, OrderItem, OrderStatusHistory,
-                        Payment, Pipeline, PipelineStage, Return, Shipment, Tag, User)
+from app.models import (
+    CustomFieldDef,
+    EntityTag,
+    Order,
+    OrderItem,
+    OrderStatusHistory,
+    Payment,
+    Pipeline,
+    PipelineStage,
+    Return,
+    Shipment,
+    Tag,
+    User,
+)
 from app.services.orders import upsert_order
 
 _writer = require_role("owner", "admin", "manager")
@@ -165,9 +176,9 @@ def create_shipment(order_id: UUID, data: ShipmentIn,
         raise HTTPException(404, "Not found")
     if data.carrier != "novaposhta":
         raise HTTPException(400, "Поки тільки novaposhta")
+    from app.core.security import decrypt_credentials
     from app.integrations.novaposhta import NovaPoshtaAdapter
     from app.models import Client, Integration
-    from app.core.security import decrypt_credentials
 
     row = db.query(Integration).filter(
         Integration.tenant_id == user.tenant_id,
@@ -226,6 +237,29 @@ class TagIn(BaseModel):
 
 
 tags_router = APIRouter(prefix="/tags", tags=["tags"])
+
+
+@router.get("/export")
+def export_orders(tenant_id: UUID = Depends(get_current_tenant),
+                  db: Session = Depends(get_db)):
+    """Експорт замовлень у CSV (фаза 6.4)."""
+    import csv
+    import io
+
+    from starlette.responses import StreamingResponse
+
+    rows = db.query(Order).filter(Order.tenant_id == tenant_id).all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "source", "external_id", "order_number", "status",
+                "payment_status", "total", "currency", "client_id", "placed_at"])
+    for o in rows:
+        w.writerow([o.id, o.source, o.external_id, o.order_number or "",
+                    o.status, o.payment_status, float(o.total or 0),
+                    o.currency, o.client_id or "", o.placed_at or ""])
+    buf.seek(0)
+    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
+                             headers={"Content-Disposition": "attachment; filename=orders.csv"})
 
 
 @router.get("/tags/all")

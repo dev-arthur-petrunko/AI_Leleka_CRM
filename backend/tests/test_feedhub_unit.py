@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Feed Hub: чисті unit-тести без БД (ТЗ 1.6).
 
 - парсинг YML і Google-фіда
@@ -12,7 +11,6 @@ DB-тести (bulk, merge end-to-end) — окремо з testcontainers, ту�
 from unittest.mock import patch
 
 import pytest
-
 from app.services.feedhub import (
     _guard_url,
     _pick_value,

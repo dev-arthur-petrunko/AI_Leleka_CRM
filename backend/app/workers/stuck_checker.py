@@ -8,7 +8,7 @@ import argparse
 from datetime import datetime, timedelta, timezone
 
 from app.db.session import SessionLocal
-from app.models import Deal, Tenant
+from app.models import Deal
 from app.services.automation import run_automations
 
 

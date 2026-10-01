@@ -1,6 +1,8 @@
-# AI Leleka CRM — MVP (FastAPI + PostgreSQL)
+# AI Leleka CRM — SaaS для малого бізнесу України (FastAPI + PostgreSQL)
 
-## Запуск
+План робіт агента: `docs/AGENT_PLAN.md` (фази 0–8). Памʼять: `CLAUDE.md`, навички `.claude/skills/`.
+
+## Запуск (dev)
 ```bash
 cp backend/.env.example backend/.env
 # в .env вписати SECRET_KEY (openssl rand -hex 32) і CREDENTIALS_KEY (Fernet generate_key)
@@ -8,6 +10,11 @@ docker compose up --build
 # API: http://localhost:8000/docs
 ```
 Без Docker — ті ж змінні в env, далі `uvicorn app.main:app --reload` з `backend/`.
+Тести: `TEST_DATABASE_URL=... alembic upgrade head && pytest -q` з `backend/`.
+
+## Прод
+`docker-compose.prod.yml` (БД/Redis без зовнішніх портів, gunicorn/2 воркери, worker+beat, місце під Caddy).
+Бекап: `scripts/backup.sh` (cron 03:00). Моніторинг: `SENTRY_DSN` опційно.
 
 ## Безпека (критично)
 - Старі дефолтні секрети з репозиторію **скомпрометовані** (репо публічне): без `SECRET_KEY`≥32 app не стартує.
@@ -20,11 +27,15 @@ docker compose up --build
 - Міграції: `backend/alembic/` підключено (`alembic revision --autogenerate`, `upgrade head`).
 
 ## Що вже є
-- SaaS-схема (11 таблиць: +`interactions` — таймлайн комунікацій)
-- Routers: `/auth` (+invite), `/clients` (+пошук/фільтри/пагінація, CSV-імпорт, interactions), `/deals` (+фільтри, CSV-експорт), `/tasks`, `/webhooks`, `/automations`, `/analytics` (платно), `/billing`, `/integrations` (шифр + SMS), `/notifications` (Redis-інбокс)
-- Движок автоматизацій викликає **реальні** адаптери: ТТН НП, SMS SendPulse/TurboSMS; кожна дія пише слід у interactions
-- Превʼю фронту `frontend-preview/` (8 екранів + login, Telegram-стиль, toast, скелетони, empty states; dashboard тягне живі дані при наявності токена, інакше мок)
-- Щомісячний перерахунок місць: `python -m app.workers.billing_recalc` (cron 1-го числа; авто-рахунки — наступний крок)
+- SaaS-схема (30+ таблиць): tenants/users, clients/deals/tasks, integrations/webhook_events (підписані),
+  automation_*, analytics, billing_orders, feed_* + products, orders/order_items/payments/shipments/returns,
+  tags/custom/pipelines, conversations/messages/templates, sync_state/lead_forms
+- Routers: `/auth` (invite, 2FA, refresh, reset, telegram), `/clients` (+erase), `/deals`, `/tasks`,
+  `/webhooks` (підписані), `/automations`, `/analytics` + `/analytics/shop` (виручка, AOV, LTV, RFM, повернення, прогноз),
+  `/billing` (per-seat + вебхуки оплати), `/integrations`, `/feedhub`, `/orders`, `/inbox`, `/forms`, `/notifications`
+- Celery-воркер + beat (вебхуки, sync, НП-трекінг, stuck, білінг, фіди); cron-скрипти лишились CLI-обгортками
+- Превʼю `frontend-preview/` (таб-бар: Дашборд, Замовлення, Вхідні, Клієнти, Ще; чесний api.js без мовчазних моків)
+- React `frontend/` (glass, TanStack Query, Ctrl+K) + `bot/` (aiogram, потрібен BOT_TOKEN)
 
 ## Правила
 1. Каждый запрос к бизнес-таблицам: `WHERE tenant_id = current_tenant`

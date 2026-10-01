@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 """Фаза 3: фікстури провайдерів, воркер вебхуків, sync, форми, трекінг."""
 
 import json
 import pathlib
 import uuid
 
-from tests.conftest import auth_headers, make_tenant, make_user
+from tests.conftest import make_tenant
 
 FIX = pathlib.Path(__file__).parent / "fixtures"
 
@@ -45,7 +44,6 @@ def test_webhook_batch_dead_after_10(client, db):
 
 
 def test_sync_state_cursor(client, db):
-    from app.core.security import encrypt_credentials
     from app.models import Integration
     from app.services.sync import get_state, sync_integration
 

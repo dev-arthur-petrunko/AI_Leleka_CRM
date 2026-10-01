@@ -5,10 +5,9 @@ Revises: e571437e56e5
 Create Date: 2026-09-29
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = 'f8c2d4a9e1b3'
 down_revision = 'e571437e56e5'
