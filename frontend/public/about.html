@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Leleka CRM — лелека приносить клієнтів</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%237dd3fc'/%3E%3Cstop offset='1' stop-color='%230369a1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='32' fill='url(%23g)'/%3E%3Ccircle cx='50' cy='12' r='6' fill='%23fde68a'/%3E%3Cpath d='M30,37 Q24,20 36,10 Q38,22 42,34 Q36,38 30,37 Z' fill='white'/%3E%3Cpath d='M36,10 Q37,20 40,30 L36,31 Q34,21 33,12 Z' fill='%230f172a'/%3E%3Cellipse cx='29' cy='41' rx='12' ry='7' fill='white'/%3E%3Cpath d='M39,39 C43,33 44,27 46,21' stroke='white' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3Ccircle cx='46' cy='19' r='4.2' fill='white'/%3E%3Cpolygon points='50,17 62,20.5 50,24' fill='%23f97316'/%3E%3Cpath d='M17,45 L4,51 M19,47 L7,54' stroke='%23f97316' stroke-width='2.6' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F7F2E9; --cream2:#EFE6D4; --ink:#251A10; --ink-soft:#6B5C4B;
+  --terracotta:#BD5A2A; --terracotta-d:#93441E; --teal:#2C5A5B;
+  --paper:#FFFDF9; --line:#E4D7C1;
+  --sans:'Manrope',system-ui,sans-serif; --disp:'Unbounded',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:var(--sans);
+  line-height:1.55;-webkit-font-smoothing:antialiased;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%;display:block}
+.wrap{max-width:1120px;margin:0 auto;padding:0 28px}
+a.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--sans);font-weight:700;
+  font-size:16px;padding:15px 28px;border-radius:12px;text-decoration:none;cursor:pointer;border:2px solid transparent}
+.btn-primary{background:var(--terracotta);color:#fff}
+.btn-primary:hover{background:var(--terracotta-d)}
+.btn-ghost{border-color:var(--ink);color:var(--ink)}
+.btn-ghost:hover{background:var(--ink);color:var(--cream)}
+.btn-invert{border-color:#fff;color:#fff}
+.btn-invert:hover{background:#fff;color:var(--ink)}
+
+header{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;
+  padding:16px 0;padding-top:calc(16px + env(safe-area-inset-top,0px))}
+header .wrap{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:12px;font-family:var(--disp);font-weight:700;font-size:17px}
+.brand img{width:36px;height:36px;border-radius:50%;object-fit:cover;object-position:center 10%}
+.login{font-family:var(--sans);font-weight:700;color:#fff;text-decoration:none;
+  border:1.5px solid rgba(255,255,255,.35);padding:9px 18px;border-radius:10px}
+
+/* HERO — asymmetric, illustration bleeds past the edge */
+.hero{position:relative;overflow:hidden;padding:72px 0 0}
+.hero::before{content:"";position:absolute;inset:-20% -10% auto auto;width:640px;height:640px;
+  background:radial-gradient(circle,rgba(189,90,42,.16),transparent 68%);z-index:0}
+.hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1.05fr .95fr;gap:32px;align-items:end}
+.hero h1{font-family:var(--disp);font-weight:800;font-size:clamp(34px,4.4vw,54px);line-height:1.05;
+  margin:0 0 6px;letter-spacing:-.01em}
+.hero h1 span{color:var(--terracotta)}
+.hero .payoff{font-family:var(--disp);font-weight:500;font-size:clamp(19px,2vw,24px);color:var(--ink-soft);margin:0 0 22px}
+.hero p{font-size:17px;color:var(--ink-soft);max-width:46ch;margin:0 0 30px}
+.hero .ctas{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:56px}
+.hero .art{position:relative}
+.hero .art img{width:100%;max-width:420px;margin-left:auto;filter:drop-shadow(0 24px 40px rgba(37,26,16,.18))}
+.stat-strip{border-top:1px solid var(--line);padding:26px 0}
+.stat-strip .wrap{display:flex}
+.stat{flex:1;text-align:center;padding:0 12px;position:relative}
+.stat+.stat::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:1px;background:var(--line)}
+.stat b{display:block;font-family:var(--disp);font-weight:700;font-size:26px}
+.stat span{font-size:13.5px;color:var(--ink-soft)}
+
+/* PULL-QUOTE — editorial, not a card */
+.quote{padding:76px 0}
+.quote .wrap{display:grid;grid-template-columns:auto 1fr;gap:28px}
+.quote .mark{font-family:var(--disp);font-size:64px;line-height:.7;color:var(--terracotta);font-weight:700}
+.quote p{font-size:19px;max-width:64ch;margin:0}
+.quote b{font-weight:700}
+
+/* BENEFITS — asymmetric: one wide lead item + three quiet ones */
+.benefits{padding:0 0 76px}
+.benefits .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.b-card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:26px}
+.b-card.lead{grid-column:span 3;background:var(--ink);color:var(--cream);border:none;
+  display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center}
+.b-card h3{font-family:var(--disp);font-size:17px;margin:0 0 8px;font-weight:600}
+.b-card.lead h3{font-size:20px;color:#fff}
+.b-card p{margin:0;color:var(--ink-soft);font-size:14.5px}
+.b-card.lead p{color:#D9CBBB;font-size:15px}
+.b-card.lead .tag{font-size:36px}
+
+/* AI PANEL — the one bold moment */
+.ai-panel{background:var(--teal);color:#fff;padding:80px 0;position:relative;overflow:hidden}
+.ai-panel::after{content:"";position:absolute;left:-120px;bottom:-160px;width:420px;height:420px;
+  border-radius:50%;background:rgba(255,255,255,.06)}
+.ai-panel .wrap{position:relative;display:grid;grid-template-columns:.85fr 1.15fr;gap:48px;align-items:center}
+.ai-panel img{max-width:300px;filter:drop-shadow(0 20px 30px rgba(0,0,0,.25))}
+.ai-panel h2{font-family:var(--disp);font-weight:700;font-size:clamp(24px,3vw,32px);margin:0 0 20px;line-height:1.2}
+.ai-list{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:14px}
+.ai-list li{display:grid;grid-template-columns:auto 1fr;gap:12px;font-size:15.5px}
+.ai-list .ico{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.16);
+  display:flex;align-items:center;justify-content:center;font-size:13px;flex:none}
+.ai-panel .fine{font-size:13px;color:#CFE2E2;margin:0}
+
+/* LIVE DEMO — приклад кабінету прямо на головній */
+.demo{padding:0 0 80px}
+.demo h2{font-family:var(--disp);font-size:26px;margin:0 0 8px}
+.demo .sub{color:var(--ink-soft);margin:0 0 22px;font-size:15.5px}
+.demo .frame{display:block;border:1px solid var(--line);border-radius:18px;overflow:hidden;
+  background:var(--paper);box-shadow:0 24px 40px rgba(37,26,16,.12)}
+.demo iframe{width:100%;height:540px;border:0;pointer-events:none;display:block}
+.demo .ctas{margin-top:20px}
+
+/* STEPS — legitimate sequence, timeline */
+.steps{padding:80px 0}
+.steps h2{font-family:var(--disp);font-size:26px;margin:0 0 36px}
+.step-row{display:grid;grid-template-columns:auto 1fr;gap:20px;position:relative;padding-bottom:34px}
+.step-row:last-child{padding-bottom:0}
+.step-row::before{content:"";position:absolute;left:19px;top:42px;bottom:0;width:2px;background:var(--line)}
+.step-row:last-child::before{display:none}
+.num{width:40px;height:40px;border-radius:50%;background:var(--terracotta);color:#fff;
+  font-family:var(--disp);font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;z-index:1}
+.step-row h4{margin:2px 0 4px;font-size:16.5px}
+.step-row p{margin:0;color:var(--ink-soft);font-size:15px}
+
+/* PRICING */
+.pricing{padding:0 0 80px}
+.pricing h2{font-family:var(--disp);font-size:26px;margin:0 0 30px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start}
+.plan{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:30px 26px}
+.plan.hi{background:var(--ink);color:var(--cream);border:none;transform:translateY(-10px);
+  box-shadow:0 24px 40px rgba(37,26,16,.2)}
+.badge{display:inline-block;font-size:12px;font-weight:700;background:var(--terracotta);color:#fff;
+  padding:4px 11px;border-radius:99px;margin-bottom:12px}
+.plan h3{font-family:var(--disp);font-size:16px;margin:0 0 4px;font-weight:600}
+.plan .price{font-family:var(--disp);font-size:34px;font-weight:800;margin:6px 0}
+.plan .price small{font-size:14px;font-weight:500;color:var(--ink-soft)}
+.plan.hi .price small{color:#C9BBA9}
+.plan .pitch{font-size:14px;color:var(--ink-soft);margin:0 0 18px}
+.plan.hi .pitch{color:#D9CBBB}
+.plan ul{list-style:none;padding:0;margin:0 0 22px;display:grid;gap:9px;font-size:14.5px}
+.plan li::before{content:"— "}
+.plan a.btn{width:100%;justify-content:center;box-sizing:border-box}
+
+/* SUPPORT */
+.support{padding:0 0 80px}
+.support .card{background:var(--cream2);border-radius:22px;padding:44px;display:grid;
+  grid-template-columns:auto 1fr;gap:36px;align-items:center}
+.support img{width:150px}
+.support h3{font-family:var(--disp);font-size:20px;margin:0 0 8px}
+.support p{margin:0 0 18px;color:var(--ink-soft);max-width:52ch}
+
+/* CLOSING CTA */
+.closing{background:var(--terracotta);color:#fff;padding:64px 0;text-align:center}
+.closing h2{font-family:var(--disp);font-weight:700;font-size:clamp(24px,3vw,32px);margin:0 0 22px}
+
+footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
+
+@media(max-width:820px){
+  .hero .wrap{grid-template-columns:1fr}
+  .hero .art{order:-1}
+  .hero .art img{max-width:220px;margin:0 auto}
+  .b-card.lead{grid-column:span 1;grid-template-columns:1fr}
+  .benefits .grid{grid-template-columns:1fr}
+  .ai-panel .wrap{grid-template-columns:1fr}
+  .ai-panel img{margin:0 auto}
+  .plans{grid-template-columns:1fr}
+  .plan.hi{transform:none}
+  .support .card{grid-template-columns:1fr;text-align:center}
+  .support img{margin:0 auto}
+  .quote .wrap{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand"><img src="assets/leleka-mascot.png" alt="Лелека"> AI Leleka CRM</div>
+    <a class="login" href="login.html">Увійти →</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1>Лелека приносить <span>клієнтів.</span></h1>
+      <p class="payoff">А ви — тільки берете слухавку.</p>
+      <p>Заявки з Prom, Rozetka чи форми на сайті самі падають у чергу. AI сортує, хто гарячий, а хто просто дивився. Відкриваєте CRM раз на день — і одразу бачите, кому дзвонити зараз.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="login.html?mode=register">Спробувати безкоштовно</a>
+        <a class="btn btn-ghost" href="#pricing">Порівняти тарифи</a>
+      </div>
+    </div>
+    <div class="art"><img src="assets/leleka-hero.png" alt="Лелека з CRM"></div>
+  </div>
+</section>
+
+<div class="stat-strip">
+  <div class="wrap">
+    <div class="stat"><b>0 ₴</b><span>старт для першого користувача</span></div>
+    <div class="stat"><b>5 хв</b><span>від реєстрації до першої угоди</span></div>
+    <div class="stat"><b>24/7</b><span>AI пильнує угоди й клієнтів</span></div>
+  </div>
+</div>
+
+<section class="quote">
+  <div class="wrap">
+    <div class="mark">“</div>
+    <p>В українській культурі лелека — символ дому й турботи: щороку повертається в те саме гніздо і не покидає його, поки все не готово. <b>Leleka CRM працює так само вперто</b> — жодна заявка не губиться, поки угоду не доведено до кінця.</p>
+  </div>
+</section>
+
+<section class="benefits">
+  <div class="wrap grid">
+    <div class="b-card lead">
+      <div>
+        <h3>Автоматизації «якщо → то»</h3>
+        <p>Новий лід — менеджеру. Угода зависла 3 дні — нагадування. Оплата — ТТН Нової Пошти і чек. Без участі людини.</p>
+      </div>
+      <div class="tag">🔁</div>
+    </div>
+    <div class="b-card">
+      <h3>Старт без навчання</h3>
+      <p>Картки клієнтів, воронка, нагадування — усе, без чого CRM не CRM. Менеджер розбирається сам за 5 хвилин.</p>
+    </div>
+    <div class="b-card">
+      <h3>Українське з коробки</h3>
+      <p>Нова Пошта, Checkbox ПРРО, LiqPay і Monobank, Prom і Rozetka — інтерфейс українською.</p>
+    </div>
+    <div class="b-card">
+      <h3>Безпека і довіра</h3>
+      <p>Журнал «хто що змінив», ролі доступу, шифрування ключів. Базу тихо не зіллють.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ai-panel">
+  <div class="wrap">
+    <img src="assets/leleka-ai.png" alt="AI-аналітика">
+    <div>
+      <h2>AI, який пише листи клієнтам, а не тільки малює графіки</h2>
+      <ul class="ai-list">
+        <li><span class="ico">🔥</span><span>Оцінка лідів hot/warm/cold — дзвоните спочатку найперспективнішим</span></li>
+        <li><span class="ico">📈</span><span>Прогноз продажів на місяць і ризик відтоку — кого рятувати вже зараз</span></li>
+        <li><span class="ico">✉️</span><span>AI сама пише лист клієнту з назвою товару й номером замовлення — менеджер лише тисне «Надіслати»</span></li>
+        <li><span class="ico">📨</span><span>Надсилання в Telegram, Viber або на email — де клієнту зручніше</span></li>
+      </ul>
+      <p class="fine">У зовнішній AI йдуть лише знеособлені дані (GDPR).</p>
+    </div>
+  </div>
+</section>
+
+<section class="demo">
+  <div class="wrap">
+    <h2>Живий кабінет — приклад дашборда</h2>
+    <p class="sub">Справжній дашборд з прикладом даних. Натисніть, щоб відкрити демо повністю.</p>
+    <a class="frame" href="dashboard.html">
+      <iframe src="dashboard.html" title="Приклад дашборда" loading="lazy"></iframe>
+    </a>
+    <div class="ctas" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:20px">
+      <a class="btn btn-primary" href="dashboard.html">Відкрити живе демо →</a>
+    </div>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="wrap">
+    <h2>Як це працює — 3 кроки</h2>
+    <div class="step-row"><div class="num">1</div><div><h4>Зареєструйтесь</h4><p>Компанія і власник — за хвилину, перший користувач безкоштовно.</p></div></div>
+    <div class="step-row"><div class="num">2</div><div><h4>Підключіть магазин</h4><p>Prom і Rozetka підтягнуть замовлення самі — або імпортуйте CSV.</p></div></div>
+    <div class="step-row"><div class="num">3</div><div><h4>Увімкніть автоматизації й AI</h4><p>5 правил одним кліком, дашборд одразу покаже гарячих лідів.</p></div></div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="wrap">
+    <h2>Тарифи</h2>
+    <div class="plans">
+      <div class="plan">
+        <h3>Free</h3>
+        <div class="price">0 ₴</div>
+        <p class="pitch">Щоб просто перестати губити заявки</p>
+        <ul><li>1 користувач</li><li>Картки + воронка + задачі</li></ul>
+        <a class="btn btn-ghost" href="login.html?mode=register&plan=free">Почати</a>
+      </div>
+      <div class="plan hi">
+        <span class="badge">Популярний вибір</span>
+        <h3>Pro</h3>
+        <div class="price">350 ₴ <small>/ місце · міс</small></div>
+        <p class="pitch">Коли час — найдорожчий ресурс</p>
+        <ul><li>До 5 місць</li><li>AI-аналітика + листи клієнтам</li><li>Маркетплейси + Нова Пошта</li></ul>
+        <a class="btn btn-invert" href="login.html?mode=register&plan=pro">Обрати Pro</a>
+      </div>
+      <div class="plan">
+        <h3>Team</h3>
+        <div class="price">300 ₴ <small>/ місце · міс</small></div>
+        <p class="pitch">Для команди, що вже виросла з Excel</p>
+        <ul><li>5+ місць</li><li>+ Checkbox ПРРО</li><li>Пріоритетна підтримка</li></ul>
+        <a class="btn btn-ghost" href="login.html?mode=register&plan=team">Обрати Team</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="support">
+  <div class="wrap card">
+    <img src="assets/leleka-support.png" alt="Підтримка">
+    <div>
+      <h3>Лелека на зв'язку 📞</h3>
+      <p>Підтримка українською у вашому часовому поясі. Допоможемо переїхати з Excel і налаштуємо перші автоматизації разом — безкоштовно, до того як ви щось оплатите.</p>
+      <a class="btn btn-primary" href="dashboard.html">Відкрити демо</a>
+    </div>
+  </div>
+</section>
+
+<section class="closing">
+  <div class="wrap">
+    <h2>Готові перестати губити заявки?</h2>
+    <a class="btn btn-invert" href="login.html?mode=register">Спробувати безкоштовно</a>
+  </div>
+</section>
+
+<footer>AI Leleka CRM · зроблено в Україні</footer>
+
+</body>
+</html>

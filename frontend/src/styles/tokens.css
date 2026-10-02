@@ -19,22 +19,22 @@
   color-scheme: dark;
 }
 
-:root[data-theme="morning"] {            /* Ранок (светлая) */
-  --bg:          #f4f6f9;
-  --bg-elevated: #ffffff;
-  --bg-hover:    #eef2f7;
-  --border:      #e3e8ee;
-  --text:        #17212b;
-  --text-muted:  #5b6775;
-  --link:        #1d6fb8;
-  --primary:     #1a68ad;
+:root[data-theme="morning"] {            /* Ранок = бренд Leleka (як about.html) */
+  --bg:          #F7F2E9;
+  --bg-elevated: #FFFDF9;
+  --bg-hover:    #EFE6D4;
+  --border:      #E4D7C1;
+  --text:        #251A10;
+  --text-muted:  #6B5C4B;
+  --link:        #BD5A2A;
+  --primary:     #BD5A2A;
   --primary-fg:  #ffffff;
   --success:     #1f9d55;
   --warning:     #c77700;
   --danger:      #d63939;
   --info:        #2b7de9;
-  --chart-grid:  #e3e8ee;
-  --shadow:      0 1px 3px rgba(23,33,43,.08);
+  --chart-grid:  #E4D7C1;
+  --shadow:      0 1px 3px rgba(37,26,16,.1);
   color-scheme: light;
 }
 
