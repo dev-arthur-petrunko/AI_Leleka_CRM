@@ -75,3 +75,12 @@ function apiLogout() {
   localStorage.removeItem('leleka-token');
   localStorage.removeItem('leleka-refresh');
 }
+
+// file:// в браузері блочить будь-які запити до API — ведемо на http-сервер
+if (typeof location !== 'undefined' && location.protocol === 'file:') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const page = (location.pathname.split('/').pop() || 'about.html');
+    showBanner('⛔ Відкрито як файл — API недоступне. Відкрийте ' +
+      '<b>http://localhost:8080/' + page + '</b>');
+  });
+}
