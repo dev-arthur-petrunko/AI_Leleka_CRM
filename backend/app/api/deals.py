@@ -3,6 +3,7 @@ import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
 
@@ -74,9 +75,11 @@ def stuck_deals(days: int = 3,
 
 
 @router.patch("/{deal_id}/stage")
-def move_stage(deal_id: UUID, stage: str,
+def move_stage(deal_id: UUID, stage: str, loss_reason: str | None = None,
                user=Depends(_writer),
                db: Session = Depends(get_db)):
+    if stage == "lost" and not (loss_reason or "").strip():
+        raise HTTPException(400, "Причина програшу обовʼязкова (UI-5)")
     d = db.query(Deal).filter(
         Deal.id == deal_id, Deal.tenant_id == user.tenant_id
     ).first()
@@ -92,6 +95,7 @@ def move_stage(deal_id: UUID, stage: str,
         d.won_at = datetime.now(timezone.utc)
     if stage == "lost":
         d.lost_at = datetime.now(timezone.utc)
+        d.loss_reason = loss_reason
     db.flush()
     # Тригеры deal_won / deal_lost
     from app.services.automation import run_automations
@@ -104,3 +108,38 @@ def move_stage(deal_id: UUID, stage: str,
     else:
         db.commit()
     return d
+
+
+class ConvertIn(BaseModel):
+    total: float = 0
+    shipping_cost: float = 0
+
+
+@router.post("/{deal_id}/convert-to-order")
+def convert_to_order(deal_id: UUID, data: ConvertIn,
+                     user=Depends(_writer),
+                     db: Session = Depends(get_db)):
+    """Виграна угода → замовлення. Ідемпотентно: повтор повертає те саме."""
+    from app.models import Client, Order
+
+    d = db.query(Deal).filter(
+        Deal.id == deal_id, Deal.tenant_id == user.tenant_id
+    ).first()
+    if not d:
+        raise HTTPException(404, "Not found")
+    if d.converted_order_id:
+        order = db.query(Order).filter(Order.id == d.converted_order_id).first()
+        return {"order_id": str(order.id), "deduplicated": True}
+    client = db.query(Client).filter(Client.id == d.client_id).first()
+    order = Order(tenant_id=user.tenant_id, client_id=d.client_id,
+                  deal_id=d.id, source="manual",
+                  external_id=f"deal-{d.id}",
+                  order_number=f"D-{str(d.id)[:8]}",
+                  status="confirmed", total=data.total or float(d.amount or 0),
+                  shipping_cost=data.shipping_cost)
+    db.add(order)
+    db.flush()
+    d.converted_order_id = order.id
+    d.stage = "won"
+    db.commit()
+    return {"order_id": str(order.id), "deduplicated": False}

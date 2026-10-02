@@ -59,6 +59,7 @@ class User(Base):
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     email_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
     telegram_id: Mapped[str | None] = mapped_column(Text)  # привʼязка для Mini App входу
+    preferences: Mapped[dict] = mapped_column(JSONB, default=dict)  # UI: theme_mode, timezone...
     token_version: Mapped[int] = mapped_column(default=0)  # відкликання токенів
     totp_secret: Mapped[str | None] = mapped_column(Text)  # 2FA (зашифровано)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -119,6 +120,9 @@ class Deal(Base):
     )
     won_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lost_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    converted_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL")
+    )  # угода → замовлення (ідемпотентна конвертація, UI-5)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
 
@@ -652,6 +656,24 @@ class PipelineStage(Base):
 Index("ix_orders_tenant_status", Order.tenant_id, Order.status)
 Index("ix_orders_tenant_placed", Order.tenant_id, Order.placed_at)
 Index("ix_orders_tenant_client", Order.tenant_id, Order.client_id)
+
+
+class SavedView(Base):
+    """Збережені види списків (UI-5): фільтри користувача на сутність."""
+
+    __tablename__ = "saved_views"
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", "entity", "name"),)
+    id: Mapped[uuid.UUID] = _uuid()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE")
+    )
+    entity: Mapped[str] = mapped_column(String(20), nullable=False)  # deals/orders/clients
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    filters: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now())
 
 
 class Conversation(Base):

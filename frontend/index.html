@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>AI Leleka CRM</title>
+    <script>
+      // Anti-flash теми до першої відмальовки (UI-2)
+      try {
+        var m = localStorage.getItem('leleka.themeMode') || 'auto-time';
+        var h = new Date().getHours();
+        var t = (m === 'morning') ? 'morning' : (m === 'evening') ? 'evening'
+          : (m === 'system' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'evening'
+          : (m === 'system') ? 'morning' : (h >= 7 && h < 19) ? 'morning' : 'evening';
+        document.documentElement.dataset.theme = t;
+      } catch (e) { document.documentElement.dataset.theme = 'evening'; }
+    </script>
   </head>
   <body>
     <div id="root"></div>

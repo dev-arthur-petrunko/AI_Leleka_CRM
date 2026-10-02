@@ -1,53 +1,80 @@
-:root {
-  --bg: #0a0f1f;
-  --text: #eef2ff;
-  --text-2: #9aa6c7;
-  --glass: rgba(255, 255, 255, 0.07);
-  --glass-border: rgba(255, 255, 255, 0.16);
-  --accent-a: #38bdf8;
-  --accent-b: #8b5cf6;
-  --ok: #34d399;
-  --warn: #fbbf24;
-  --bad: #fb7185;
-  --radius: 20px;
-  --blur: 24px;
+:root,
+:root[data-theme="evening"] {            /* Вечір (темна) */
+  --bg:          #0e1621;
+  --bg-elevated: #17212b;               /* карточки, панели */
+  --bg-hover:    #1f2c3a;
+  --border:      #243447;
+  --text:        #f5f7fa;
+  --text-muted:  #8b9bb0;               /* подписи; проверить контраст ≥ 4.5:1 */
+  --link:        #6ab3f3;
+  --primary:     #2b5278;               /* кнопки */
+  --primary-fg:  #ffffff;
+  --success:     #3ddc84;
+  --warning:     #f5a623;
+  --danger:      #ff6b6b;
+  --info:        #5aa9ff;
+  --chart-grid:  #243447;
+  --shadow:      0 1px 2px rgba(0,0,0,.4);
+  --r-sm: 8px; --r-md: 12px; --r-lg: 20px;
+  color-scheme: dark;
 }
-[data-theme='light'] {
-  --bg: #e8eefc;
-  --text: #111936;
-  --text-2: #55618a;
-  --glass: rgba(255, 255, 255, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.9);
+
+:root[data-theme="morning"] {            /* Ранок (светлая) */
+  --bg:          #f4f6f9;
+  --bg-elevated: #ffffff;
+  --bg-hover:    #eef2f7;
+  --border:      #e3e8ee;
+  --text:        #17212b;
+  --text-muted:  #5b6775;
+  --link:        #1d6fb8;
+  --primary:     #1a68ad;
+  --primary-fg:  #ffffff;
+  --success:     #1f9d55;
+  --warning:     #c77700;
+  --danger:      #d63939;
+  --info:        #2b7de9;
+  --chart-grid:  #e3e8ee;
+  --shadow:      0 1px 3px rgba(23,33,43,.08);
+  color-scheme: light;
 }
+
 .glass {
-  background: var(--glass);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius);
-  backdrop-filter: blur(var(--blur)) saturate(160%);
-  -webkit-backdrop-filter: blur(var(--blur)) saturate(160%);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
 }
-@supports not (backdrop-filter: blur(1px)) {
-  .glass { background: rgba(10, 15, 31, 0.8); }
+@supports (backdrop-filter: blur(1px)) {
+  .glass.blur {
+    background: var(--glass, var(--bg-elevated));
+    backdrop-filter: blur(var(--blur, 24px)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--blur, 24px)) saturate(160%);
+    box-shadow: 0 10px 40px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.18);
+  }
 }
 /* Слабкі пристрої: .lite на <html> вимикає розмиття */
-.lite .glass { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20, 26, 50, 0.9); }
+.lite .glass.blur { backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: Inter, Manrope, system-ui, sans-serif;
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  transition: background-color .18s ease, color .18s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+  .auroras span { animation: none !important; }
 }
 /* Аврори фону */
 .auroras { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
-.auroras span { position: absolute; width: 44vw; height: 44vw; border-radius: 50%; filter: blur(90px); opacity: 0.5; }
+.auroras span { position: absolute; width: 44vw; height: 44vw; border-radius: 50%; filter: blur(90px); opacity: 0.35; }
 .auroras span:nth-child(1) { background: #38bdf8; top: -10%; left: -10%; animation: drift 20s ease-in-out infinite alternate; }
 .auroras span:nth-child(2) { background: #8b5cf6; bottom: -15%; right: -5%; animation: drift 20s ease-in-out infinite alternate-reverse; }
-.auroras span:nth-child(3) { background: #34d399; top: 40%; left: 55%; opacity: 0.25; animation: drift 20s ease-in-out infinite alternate; }
+.auroras span:nth-child(3) { background: #34d399; top: 40%; left: 55%; opacity: 0.18; animation: drift 20s ease-in-out infinite alternate; }
 @keyframes drift { from { transform: translate(0, 0); } to { transform: translate(6vw, 4vh); } }
-@media (prefers-reduced-motion: reduce) { .auroras span { animation: none; } }
 
 button, a { min-height: 40px; }
-:focus-visible { outline: 2px solid var(--accent-a); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .num { font-variant-numeric: tabular-nums; }

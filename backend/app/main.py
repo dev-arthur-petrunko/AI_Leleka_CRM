@@ -18,8 +18,10 @@ from app.api import (
     messages,
     notifications,
     orders,
+    search,
     shop,
     tasks,
+    views,
     webhooks,
 )
 from app.core.config import frontend_origins
@@ -56,7 +58,9 @@ app.include_router(inbox.router)
 app.include_router(messages.router)
 app.include_router(notifications.router)
 app.include_router(orders.router)
+app.include_router(search.router)
 app.include_router(shop.router)
+app.include_router(views.router)
 
 
 import os

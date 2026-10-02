@@ -39,3 +39,4 @@ jobs:
       - run: python -m compileall backend/app
       - run: cd backend && alembic upgrade head
       - run: cd backend && pytest -q
+      - run: cd frontend && node ../frontend/scripts/check-contrast.mjs 2>/dev/null || node scripts/check-contrast.mjs
