@@ -16,6 +16,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T | null
       headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json', ...(init?.headers || {}) },
     });
     clearTimeout(timer);
+    if (r.status === 401) {
+      localStorage.removeItem('leleka-token');
+      if (!location.pathname.endsWith('/login')) location.replace('/login');
+      return null;
+    }
     if (!r.ok) return null;
     return (await r.json()) as T;
   } catch {
