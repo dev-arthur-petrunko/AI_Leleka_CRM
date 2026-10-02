@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../api';
-
-const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30000 } } });
 
 type Dash = {
   kpi: { new_leads_30d: number; conversion: number; avg_check: number };
@@ -105,9 +103,5 @@ function Body() {
 }
 
 export default function Dashboard() {
-  return (
-    <QueryClientProvider client={qc}>
-      <Body />
-    </QueryClientProvider>
-  );
+  return <Body />;
 }
