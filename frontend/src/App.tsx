@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3, Bell, Inbox, KanbanSquare, Moon, Package, Settings as SettingsIcon,
   ShoppingCart, Sun, Users, CheckSquare, Home, Plus,
@@ -170,6 +170,9 @@ export default function App() {
             {!authed && <Link to="/login">Увійти</Link>}
           </header>
           <main style={{ maxWidth: 1440, margin: '0 auto', padding: '16px 16px 90px' }}>
+            {!authed && loc.pathname !== '/login' ? (
+              <Navigate to="/login" replace />
+            ) : (
             <Routes>
               <Route path="/" element={<Today />} />
               <Route path="/deals" element={<Deals />} />
@@ -185,6 +188,7 @@ export default function App() {
               <Route path="/ui-kit" element={<UiKit />} />
               <Route path="/login" element={<Login />} />
             </Routes>
+            )}
           </main>
         </div>
       </div>
