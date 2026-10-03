@@ -23,7 +23,7 @@ class BaseAdapter:
             try:
                 return {"ok": True, "data": fn(*args, **kwargs),
                         "attempt": attempt, "stub": False}
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 last_err = str(e)
                 time.sleep(min(2 ** attempt, 8))
         return {"ok": False, "error": last_err,

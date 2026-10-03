@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Збережені види списків (UI-5)."""
 
 from uuid import UUID

@@ -5,7 +5,7 @@ MVP: cron раз в час -> python -m app.workers.stuck_checker --days 3
 """
 
 import argparse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from app.db.session import SessionLocal
 from app.models import Deal
@@ -15,7 +15,7 @@ from app.services.automation import run_automations
 def check_stuck(days: int = 3) -> dict:
     db = SessionLocal()
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         stuck = db.query(Deal).filter(
             Deal.stage.notin_(["won", "lost"]),
             Deal.last_activity_at < cutoff,

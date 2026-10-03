@@ -30,6 +30,7 @@ router = APIRouter(prefix="/integrations", tags=["integrations"])
 from app.integrations.email import SmtpEmailAdapter
 from app.integrations.telegram import TelegramAdapter
 from app.integrations.viber import ViberAdapter
+from datetime import UTC
 
 ADAPTERS = {"novaposhta": NovaPoshtaAdapter, "checkbox": CheckboxAdapter,
             "liqpay": LiqPayAdapter, "monobank": MonoAdapter,
@@ -175,7 +176,7 @@ def import_orders(provider: str, user: User = Depends(_admin),
             "total": o["amount"], "order_number": o["external_id"],
             "raw": {"product_summary": o.get("product_summary")}}, origin="import")
         n += 1
-    from datetime import datetime, timezone
-    row.last_sync_at = datetime.now(timezone.utc)
+    from datetime import datetime
+    row.last_sync_at = datetime.now(UTC)
     db.commit()
     return {"ok": True, "imported": n}

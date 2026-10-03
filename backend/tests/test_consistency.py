@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
 """Тест узгодженості цифр (UI 6.2): аналітика == таблиці. Розбіжність роняє CI."""
 
 import uuid
 
 from tests.conftest import auth_headers, make_tenant, make_user
+from datetime import UTC
 
 
 def _mk(db, tag):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.models import Client, Deal, Order
 
@@ -16,7 +16,7 @@ def _mk(db, tag):
     c = Client(tenant_id=t.id, name="C")
     db.add(c)
     db.flush()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for i, (st, amt) in enumerate([("new", 100), ("new", 200), ("won", 300)]):
         db.add(Deal(tenant_id=t.id, client_id=c.id, title=f"d{i}",
                     amount=amt, stage=st, last_activity_at=now,
@@ -52,7 +52,7 @@ def test_avg_check_matches_revenue(client, db):
 
 
 def test_lost_excluded_from_churn(client, db):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from app.models import Client, Deal
     from app.services import ai as _ai
@@ -60,7 +60,7 @@ def test_lost_excluded_from_churn(client, db):
     tag = uuid.uuid4().hex[:6]
     t = make_tenant(db, slug=f"ch-{tag}")
     make_user(db, t, role="owner")
-    old = datetime.now(timezone.utc) - timedelta(days=60)
+    old = datetime.now(UTC) - timedelta(days=60)
     c = Client(tenant_id=t.id, name="Lost", segment="lost")
     db.add(c)
     db.flush()

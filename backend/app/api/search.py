@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 """Глобальний пошук і «Сьогодні» (UI-3, UI-4): строго tenant_id."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -46,7 +45,7 @@ def today(tenant_id: UUID = Depends(get_current_tenant),
           db: Session = Depends(get_db)):
     """«Що зробити зараз»: прострочені задачі, завислі угоди, нові/неоплачені замовлення,
     непрочитані діалоги. Кожен рядок веде на обʼєкт."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     items: list[dict] = []
     overdue = db.query(Task).filter(
         Task.tenant_id == tenant_id, Task.status == "open",

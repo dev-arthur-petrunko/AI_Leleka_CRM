@@ -13,7 +13,7 @@
 - next best action: кому дзвонити зараз
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -72,9 +72,9 @@ def churn_candidates(db: Session, tenant_id: UUID, idle_days: int = 30) -> list[
         "HAVING MAX(d.last_activity_at) < now() - make_interval(days => :days) "
         "ORDER BY last_act LIMIT 20"),
         {"t": str(tenant_id), "days": idle_days}).fetchall()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return [{"client_id": str(r[0]), "name": r[1], "segment": r[2],
-             "days_idle": max(0, (now - r[3].replace(tzinfo=timezone.utc)).days
+             "days_idle": max(0, (now - r[3].replace(tzinfo=UTC)).days
                               if r[3].tzinfo is None else (now - r[3]).days)}
             for r in rows]
 
@@ -83,7 +83,7 @@ def next_best_actions(db: Session, tenant_id: UUID) -> list[dict]:
     """Черга менеджеру: завислі + переговори без задач (2 запити замість 3 таблиць цілком)."""
     from sqlalchemy import text
 
-    cutoff_3d = datetime.now(timezone.utc) - timedelta(days=3)
+    cutoff_3d = datetime.now(UTC) - timedelta(days=3)
     stuck = db.execute(text(
         "SELECT id, stage, last_activity_at FROM deals WHERE tenant_id = :t "
         "AND stage NOT IN ('won','lost') AND last_activity_at < :cut "
@@ -128,7 +128,7 @@ def ai_text_insight(anonymized: list[dict]) -> dict:
         r.raise_for_status()
         return {"summary": r.json()["content"][0]["text"],
                 "pii_sent": False, "ai_used": True, "model": model}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return {"summary": f"Угод: {n}, сума: {total:.0f} грн. (AI недоступний: {e})",
                 "pii_sent": False, "ai_used": False}
 
@@ -136,5 +136,5 @@ def ai_text_insight(anonymized: list[dict]) -> dict:
 def _days_since(dt: datetime | None) -> int:
     if not dt:
         return 999
-    aware = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-    return max(0, (datetime.now(timezone.utc) - aware).days)
+    aware = dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+    return max(0, (datetime.now(UTC) - aware).days)

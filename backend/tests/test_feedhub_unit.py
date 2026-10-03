@@ -41,9 +41,12 @@ XXE = (
 )
 
 
+from typing import ClassVar
+
+
 class FakeSource:
     url = "https://example.com/feed.xml"
-    settings = {}
+    settings: ClassVar[dict] = {}
     last_etag = None
     last_modified = None
     last_hash = None
@@ -76,9 +79,11 @@ def test_strategies():
 
 
 def test_304_skip():
+    from typing import ClassVar
+
     class Resp:
-        status_code = 304
-        headers = {}
+        status_code: ClassVar[int] = 304
+        headers: ClassVar[dict] = {}
 
     with patch("app.services.feedhub.requests.Session") as Sess:
         Sess.return_value.get.return_value = Resp()

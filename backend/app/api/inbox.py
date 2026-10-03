@@ -10,6 +10,7 @@ from app.core.deps import get_current_tenant, require_role
 from app.core.rate import limiter
 from app.db.session import get_db
 from app.models import Client, Conversation, Integration, Message, MessageTemplate, User
+from datetime import UTC
 
 _writer = require_role("owner", "admin", "manager")
 
@@ -67,7 +68,7 @@ class ReplyIn(BaseModel):
 def reply(cid: UUID, data: ReplyIn, user: User = Depends(_writer),
            db: Session = Depends(get_db)):
     """Відповідь менеджеру прямо з CRM (поки Telegram; Viber/Meta — за тим самим патерном)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.core.security import decrypt_credentials
 
@@ -90,7 +91,7 @@ def reply(cid: UUID, data: ReplyIn, user: User = Depends(_writer),
                   channel=conv.channel, body=data.body,
                   status="sent" if sent.get("ok") and not sent.get("stub") else "queued")
     db.add(msg)
-    conv.last_message_at = datetime.now(timezone.utc)
+    conv.last_message_at = datetime.now(UTC)
     db.commit()
     return {"ok": True, "delivery": sent}
 
@@ -135,7 +136,7 @@ def render_template(body: str, client=None, order=None, shipment=None) -> str:
 async def telegram_incoming(request: Request, db: Session = Depends(get_db)):
     """Вхідні повідомлення бота: secret_token з налаштувань вебхука Telegram."""
     import os
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.services.orders import find_or_create_client
 
@@ -181,6 +182,6 @@ async def telegram_incoming(request: Request, db: Session = Depends(get_db)):
         db.add(Message(tenant_id=row.tenant_id, conversation_id=conv.id,
                        direction="in", channel="telegram", body=text,
                        external_id=msg_id, status="delivered"))
-    conv.last_message_at = datetime.now(timezone.utc)
+    conv.last_message_at = datetime.now(UTC)
     db.commit()
     return {"ok": True}

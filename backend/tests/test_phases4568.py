@@ -4,6 +4,7 @@ import time
 import uuid
 
 from tests.conftest import auth_headers, make_tenant, make_user
+from datetime import UTC
 
 
 def test_inbox_flow(client, db):
@@ -37,14 +38,16 @@ def test_inbox_flow(client, db):
     assert r.status_code == 200
     from app.api.inbox import render_template
 
-    class C:
+    class _C:
         first_name = "Оля"
         name = "Оля"
-    class O:
+
+    class _O:
         order_number = "A-1"
         external_id = "x"
+
     assert render_template("Hi {{client.first_name}}, order {{order.number}}",
-                           C(), O()) == "Hi Оля, order A-1"
+                           _C(), _O()) == "Hi Оля, order A-1"
 
 
 def test_initdata_verify_unit():
@@ -64,7 +67,7 @@ def test_initdata_verify_unit():
 
 def test_dashboard_perf_10k(client, db):
     """Сід 10k угод: дашборд < 2 c (ціль ТЗ 500 мс, запас на CI)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.models import Client, Deal
 
@@ -74,7 +77,7 @@ def test_dashboard_perf_10k(client, db):
     c = Client(tenant_id=t.id, name="P")
     db.add(c)
     db.flush()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db.bulk_save_objects([Deal(tenant_id=t.id, client_id=c.id, title=f"d{i}",
                                amount=100, stage="new" if i % 2 else "won",
                                last_activity_at=now) for i in range(10000)])

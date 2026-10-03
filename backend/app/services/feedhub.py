@@ -14,7 +14,7 @@ import ipaddress
 import re
 import socket
 import time
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -41,7 +41,7 @@ def _guard_url(url: str):
         infos = socket.getaddrinfo(u.hostname, None)
     except socket.gaierror as e:
         raise ValueError(f"DNS не резолвиться: {e}") from e
-    for fam, _, _, _, sockaddr in infos:
+    for _fam, _, _, _, sockaddr in infos:
         ip = ipaddress.ip_address(sockaddr[0])
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved:
             raise ValueError(f"Заборонена адреса фіда: {ip} (SSRF-захист)")
@@ -87,7 +87,7 @@ def fetch_feed(source: FeedSource, auth: dict) -> dict:
                     "etag": r.headers.get("ETag"),
                     "last_modified": r.headers.get("Last-Modified"),
                     "hash": digest}
-        except Exception as e:  # noqa: BLE001 — ретрай, фінальна помилка після циклу
+        except Exception as e:
             last_err = e
             time.sleep(min(2 ** attempt, 8))
     raise last_err if last_err else RuntimeError("fetch failed")
@@ -146,12 +146,10 @@ def parse_offers(content: bytes, fmt: str, field_map: dict | None = None) -> lis
                 attrs = {p.get("name", ""): (p.text or "").strip()
                          for p in el.findall("param") if p.get("name")}
             else:  # google / facebook / custom
-                ns = lambda t: ["%s%s" % (ns_, t) for ns_ in
-                                ("", "{http://base.google.com/ns/1.0}")]
-                def g(*names):
+                def g(*names, _el=el, _ns=("", "{http://base.google.com/ns/1.0}")):
                     for n in names:
-                        for cand in ns(n):
-                            v = _text(el, cand)
+                        for cand in [f"{p}{n}" for p in _ns]:
+                            v = _text(_el, cand)
                             if v:
                                 return v
                     return ""
@@ -179,9 +177,7 @@ def apply_filters(offer: dict, settings: dict) -> bool:
     excl_brands = set(settings.get("exclude_brands", []))
     if excl_brands and (offer.get("brand") in excl_brands):
         return False
-    if settings.get("hide_zero_stock") and not offer.get("stock"):
-        return False
-    return True
+    return not (settings.get("hide_zero_stock") and not offer.get("stock"))
 
 
 def apply_markup(price: float, settings: dict) -> float:
@@ -224,7 +220,12 @@ def _pick_value(field: str, current, current_src: str | None, new, new_src: str,
         return new, new_src
     # source_priority: порядок з правила або числовий priority джерел
     order = rule.get("order") or []
-    rank = (lambda s: order.index(s) if s in order else len(order) + 100 - src_priority.get(s, 0))
+
+    def rank(s):
+        if s in order:
+            return order.index(s)
+        return len(order) + 100 - src_priority.get(s, 0)
+
     return (new, new_src) if rank(new_src) < rank(current_src) else (current, current_src)
 
 
@@ -273,7 +274,7 @@ def merge_source(db: Session, tenant_id: UUID, source: FeedSource,
             srcs = dict(prod.sources or {})
             srcs[str(source.id)] = off["sku"]
             prod.sources, prod.merged_from = srcs, merged
-            prod.updated_at = datetime.now(timezone.utc)
+            prod.updated_at = datetime.now(UTC)
             stats["updated"] += 1
             if n % BULK_BATCH == 0:
                 db.flush()
@@ -285,7 +286,7 @@ def merge_source(db: Session, tenant_id: UUID, source: FeedSource,
                                  source_id=source.id, external_id=off["sku"])
         offer.product_id, offer.name, offer.price = prod.id, off["name"], price
         offer.currency, offer.stock = off["currency"], off["stock"]
-        offer.raw, offer.seen_at = off.get("attrs") or {}, datetime.now(timezone.utc)
+        offer.raw, offer.seen_at = off.get("attrs") or {}, datetime.now(UTC)
         db.add(offer)
         seen_offer_ids.add(off["sku"])
     # removed: оффери джерела, яких більше нема у фіді
@@ -329,11 +330,11 @@ def run_source(db: Session, source_id: UUID) -> dict:
                 source.last_hash = fetched["hash"]
         source.last_status = run.status
         source.status = run.status  # дубль для ТЗ-сумісності
-        source.last_run_at = datetime.now(timezone.utc)
+        source.last_run_at = datetime.now(UTC)
         db.commit()
         return {"ok": True, "status": run.status, "added": run.added,
                 "updated": run.updated, "removed": run.removed}
-    except Exception as e:  # noqa: BLE001 — помилка фіксується в run, не валить планувальник
+    except Exception as e:
         run.status, run.errors = "error", {"error": str(e)[:500]}
         run.error_text = str(e)[:300]
         source.last_status = "error"
@@ -344,7 +345,7 @@ def run_source(db: Session, source_id: UUID) -> dict:
                           ref={"source_id": str(source.id)})
         return {"ok": False, "error": str(e)[:500]}
     finally:
-        run.finished_at = datetime.now(timezone.utc)
+        run.finished_at = datetime.now(UTC)
         db.commit()
 
 
@@ -356,7 +357,7 @@ def build_export_yml(db: Session, tenant_id: UUID, only_in_stock: bool = True) -
     if only_in_stock:
         q = q.filter(Product.stock > 0)
     items = []
-    for i, p in enumerate(q.limit(20000).all(), start=1):
+    for p in q.limit(20000).all():
         items.append(
             f'<offer id="{sax.escape(p.sku)}" available="true">'
             f"<name>{sax.escape(p.name)}</name>"

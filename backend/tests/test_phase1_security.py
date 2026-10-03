@@ -25,7 +25,7 @@ def test_signed_webhook_flow(client, db):
     from app.models import Integration
 
     t = make_tenant(db)
-    owner = make_user(db, t, role="owner")
+    make_user(db, t, role="owner")
     secret = "s3cr3t-32-bytes-long-value-xxxx"
     row = Integration(tenant_id=t.id, provider="prom", credentials={},
                       webhook_secret=encrypt_credentials({"v": secret})["enc"])

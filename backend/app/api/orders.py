@@ -1,6 +1,6 @@
 """API замовлень + теги/кастом/воронки (фаза 2.4–2.5)."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -97,7 +97,7 @@ def import_orders_csv(file: UploadFile = File(...), mapping: str = "{}",
     try:
         field_map = json.loads(mapping or "{}")
     except Exception:
-        raise HTTPException(400, "mapping — невалідний JSON")
+        raise HTTPException(400, "mapping — невалідний JSON") from None
     raw = file.file.read(5 * 1024 * 1024 + 1)
     if len(raw) > 5 * 1024 * 1024:
         raise HTTPException(413, "Файл завеликий (>5 МБ)")
@@ -106,7 +106,8 @@ def import_orders_csv(file: UploadFile = File(...), mapping: str = "{}",
     reader = csv.DictReader(io.StringIO(raw.decode("utf-8-sig")))
     n = 0
     for i, row in enumerate(reader):
-        get = lambda f, default="": (row.get(field_map.get(f, f)) or default).strip()
+        def get(f, default="", _row=row):
+            return (_row.get(field_map.get(f, f)) or default).strip()
         if not get("external_id") and not get("client_name"):
             continue
         try:
@@ -153,7 +154,7 @@ def set_status(order_id: UUID, data: StatusIn, user: User = Depends(_writer),
     if not order:
         raise HTTPException(404, "Not found")
     order.status = data.status
-    order.updated_at = datetime.now()
+    order.updated_at = datetime.now(UTC)
     db.commit()
     from app.services.orders import _fire_order_automations
     _fire_order_automations(db, user.tenant_id, order, origin="manager")

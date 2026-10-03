@@ -13,6 +13,7 @@ from app.core.deps import get_current_tenant, require_role
 from app.db.session import get_db
 from app.models import AuditLog, Client, Interaction, User
 from app.schemas import ClientIn
+from datetime import UTC
 
 _writer = require_role("owner", "admin", "manager")
 
@@ -161,13 +162,13 @@ def add_interaction(client_id: UUID, data: InteractionIn,
 def delete_client(client_id: UUID, request: Request,
                   user: User = Depends(_writer),
                   db: Session = Depends(get_db)):
-    from datetime import datetime, timezone
+    from datetime import datetime
     c = db.query(Client).filter(
         Client.id == client_id, Client.tenant_id == user.tenant_id
     ).first()
     if not c:
         raise HTTPException(404, "Not found")
-    c.deleted_at = datetime.now(timezone.utc)  # soft-delete
+    c.deleted_at = datetime.now(UTC)  # soft-delete
     _audit(db, user, str(c.id), "delete", request=request)
     db.commit()
     return {"ok": True}
@@ -178,7 +179,7 @@ def erase_client(client_id: UUID, request: Request,
                  user: User = Depends(require_role("owner", "admin")),
                  db: Session = Depends(get_db)):
     """GDPR-видалення (фаза 8.2): знеособлення замість soft-delete."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     c = db.query(Client).filter(
         Client.id == client_id, Client.tenant_id == user.tenant_id
     ).first()
@@ -189,7 +190,7 @@ def erase_client(client_id: UUID, request: Request,
     c.telegram_chat_id, c.viber_id = None, None
     c.notes, c.consents, c.custom = "", {}, {}
     c.segment = "lost"
-    c.deleted_at = datetime.now(timezone.utc)
+    c.deleted_at = datetime.now(UTC)
     _audit(db, user, str(c.id), "delete",
            new={"erased": True}, request=request)
     db.commit()

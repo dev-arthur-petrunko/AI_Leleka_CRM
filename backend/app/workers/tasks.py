@@ -1,6 +1,6 @@
 """Періодичні задачі (фаза 3): вебхуки, sync, трекінг НП, stuck, білінг, фіди."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from app.workers.celery_app import celery
 
@@ -40,7 +40,7 @@ def process_webhook_batch(limit: int = 50) -> dict:
                     "raw": body}, origin="webhook")
                 ev.status = "processed"
                 done += 1
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 ev.retry_count = (ev.retry_count or 0) + 1
                 if ev.retry_count >= 10:
                     ev.status = "dead"
@@ -49,7 +49,7 @@ def process_webhook_batch(limit: int = 50) -> dict:
                     ev.status = "failed"
                     ev.error = str(e)[:500]
                     minutes = min(2 ** ev.retry_count, 60)
-                    ev.next_retry_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+                    ev.next_retry_at = datetime.now(UTC) + timedelta(minutes=minutes)
                     failed += 1
             db.commit()
         return {"done": done, "failed": failed, "dead": dead}

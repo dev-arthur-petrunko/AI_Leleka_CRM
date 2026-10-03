@@ -1,7 +1,7 @@
 """Ідемпотентний імпорт замовлень (фаза 2.3): єдина точка входу для вебхуків,
 polling і ручного створення. Повтор = той самий результат (ON CONFLICT)."""
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from uuid import UUID
 
 from sqlalchemy.dialects.postgresql import insert
@@ -36,7 +36,7 @@ def upsert_order(db: Session, tenant_id: UUID, dto: dict,
                  origin: str = "manager") -> Order:
     """dto: source, external_id, client_name/phone/email, status, items[{sku,name,qty,unit_price}],
     total, currency, payment_*, order_number, placed_at, raw."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     items = dto.pop("items", [])
     client = find_or_create_client(db, tenant_id, dto.get("client_name", ""),
                                    dto.get("phone"), dto.get("email"),

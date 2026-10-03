@@ -27,6 +27,7 @@ from app.db.session import get_db
 from app.integrations.payments import LiqPayAdapter, MonoAdapter
 from app.models import AuditLog, BillingOrder, Tenant, User
 from app.services.billing import PLANS, check_seats, current_plan
+from datetime import UTC
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -149,7 +150,7 @@ def webhook_monobank(body: dict, db: Session = Depends(get_db)):
 
 
 def _confirm_paid(db: Session, order_id: str) -> dict:
-    from datetime import datetime, timezone
+    from datetime import datetime
     order = db.query(BillingOrder).filter(BillingOrder.order_id == order_id).first()
     if not order:
         raise HTTPException(404, "Order not found")
@@ -157,7 +158,7 @@ def _confirm_paid(db: Session, order_id: str) -> dict:
         return {"ok": True, "plan": order.plan, "message": "Уже оплачено"}
     tenant = db.query(Tenant).filter(Tenant.id == order.tenant_id).first()
     order.status = "paid"
-    order.paid_at = datetime.now(timezone.utc)
+    order.paid_at = datetime.now(UTC)
     _apply_plan(db, None, tenant, order.plan, order_id=order_id, seats_billed=order.seats_billed)
     return {"ok": True, "plan": order.plan}
 

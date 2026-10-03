@@ -1,6 +1,6 @@
 """Трекінг відправлень НП (фаза 3.7): статуси → delivered/returned + автоматизації."""
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from sqlalchemy.orm import Session
 
@@ -33,22 +33,22 @@ def poll_shipments(db: Session) -> dict:
             status = str(data.get("Status") or data.get("status") or "")
             code = str(data.get("StatusCode") or data.get("status_code") or "")
             ship.status, ship.status_code = status, code
-            ship.last_polled_at = datetime.now(timezone.utc)
+            ship.last_polled_at = datetime.now(UTC)
             order = db.query(Order).filter(Order.id == ship.order_id).first()
             if code in ("9", "10", "11") or "вручено" in status.lower() or "отримано" in status.lower():
-                ship.delivered_at = datetime.now(timezone.utc)
+                ship.delivered_at = datetime.now(UTC)
                 if order and order.status != "delivered":
                     order.status = "delivered"
                     _fire(db, ship.tenant_id, order, "order_delivered")
                 done += 1
             elif code in ("102", "103", "104", "105") or "відмов" in status.lower() or "поверн" in status.lower():
-                ship.returned_at = datetime.now(timezone.utc)
+                ship.returned_at = datetime.now(UTC)
                 if order and order.status != "returned":
                     order.status = "returned"
                     _fire(db, ship.tenant_id, order, "order_returned", high=True)
                 returned += 1
             db.commit()
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             errors.append(str(e)[:200])
             db.rollback()
     return {"polled": len(rows), "delivered": done, "returned": returned, "errors": errors}

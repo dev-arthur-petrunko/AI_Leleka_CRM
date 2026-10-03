@@ -19,6 +19,7 @@ from app.core.rate import limiter
 from app.core.security import decrypt_credentials, verify_signature
 from app.db.session import get_db
 from app.models import Integration, Tenant, User, WebhookEvent
+from datetime import UTC
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -112,9 +113,9 @@ async def ingest_signed(provider: str, integration_id: str,
 def pending(user: User = Depends(_owner_admin),
             db: Session = Depends(get_db)):
     """Тільки свій тенант (фаза 1.1). Воркер читає БД напряму."""
-    from datetime import datetime, timezone
+    from datetime import datetime
     return db.query(WebhookEvent).filter(
         WebhookEvent.tenant_id == user.tenant_id,
         WebhookEvent.status.in_(["received", "failed"]),
-        WebhookEvent.next_retry_at <= datetime.now(timezone.utc),
+        WebhookEvent.next_retry_at <= datetime.now(UTC),
     ).order_by(WebhookEvent.next_retry_at).limit(50).all()

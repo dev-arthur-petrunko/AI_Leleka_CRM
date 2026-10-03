@@ -1,0 +1,21 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "UP", "SIM", "RUF", "LOG", "DTZ", "C408"]
+ignore = [
+  # SQLAlchemy mapped_column(default=dict) — стандартний патерн, не баг
+  "B008",
+  # Навмисні broad-except у межах із логуванням/фолбеком
+  "BLE001",
+  # Український текст у рядках/документації — не "ambiguous", це мова проєкту
+  "RUF001", "RUF002", "RUF003",
+  # Навмисні ліниві імпорти всередині функцій (цикли залежностей)
+  "E402",
+  # Довгі рядки правимо поступово, не блокують CI
+  "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["RUF059"]

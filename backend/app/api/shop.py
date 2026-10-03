@@ -1,6 +1,6 @@
 """Аналітика магазину (фаза 6.2): виручка, AOV, LTV, повтори, RFM, повернення."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -26,7 +26,7 @@ def revenue(tenant_id: UUID = Depends(get_current_tenant),
     """Виручка і число замовлень по днях (оплачені)."""
     from sqlalchemy import Date, cast
 
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = db.query(cast(Order.placed_at, Date).label("d"),
                     func.sum(Order.total), func.count(Order.id)).filter(
         Order.tenant_id == tenant_id, Order.placed_at >= since)\

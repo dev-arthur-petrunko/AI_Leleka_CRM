@@ -36,9 +36,6 @@ def list_sources(tenant_id: UUID = Depends(get_current_tenant),
     rows = db.query(FeedSource).filter(FeedSource.tenant_id == tenant_id).all()
     out = []
     for r in rows:
-        n_products = db.query(Product).filter(
-            Product.tenant_id == tenant_id,
-            Product.sources.has_key(str(r.id))).count() if hasattr(Product.sources, "has_key") else None
         out.append({"id": str(r.id), "name": r.name, "url": r.url,
                     "format": r.format, "interval_minutes": r.interval_minutes,
                     "priority": r.priority, "is_active": r.is_active,

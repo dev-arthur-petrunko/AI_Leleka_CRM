@@ -83,7 +83,7 @@ def generate_template(product_summary: str | None, channel: str) -> dict:
         r.raise_for_status()
         text = r.json()["content"][0]["text"].strip()
         return {"template": text, "ai_used": True}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         return {"template": _FALLBACK_TEMPLATES[channel], "ai_used": False, "ai_error": str(e)}
 
 
@@ -96,9 +96,9 @@ def compose_message(client: Client, deal: Deal | None, channel: str) -> dict:
     order_number = deal.order_number if deal else None
 
     tpl = generate_template(product_summary, channel)
-    fmt_kwargs = dict(greeting=_greeting(client.first_name, client.last_name),
-                      product_line=_product_line(product_summary),
-                      order_line=_order_line(order_number))
+    fmt_kwargs = {"greeting": _greeting(client.first_name, client.last_name),
+                  "product_line": _product_line(product_summary),
+                  "order_line": _order_line(order_number)}
     text = _safe_format(tpl["template"], **fmt_kwargs)
     if text is None:  # AI повернула зіпсований шаблон — відкат на гарантовано робочий
         text = _FALLBACK_TEMPLATES[channel].format(**fmt_kwargs)

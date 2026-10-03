@@ -31,7 +31,7 @@ def get_current_user(
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
-        )
+        ) from None
     user = (
         db.query(User)
         .filter(User.id == UUID(user_id), User.tenant_id == UUID(tenant_id))

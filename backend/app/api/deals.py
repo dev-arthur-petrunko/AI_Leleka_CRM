@@ -11,6 +11,7 @@ from app.core.deps import get_current_tenant, require_role
 from app.db.session import get_db
 from app.models import Deal
 from app.schemas import DealIn
+from datetime import UTC
 
 _writer = require_role("owner", "admin", "manager")
 
@@ -65,8 +66,8 @@ def stuck_deals(days: int = 3,
                 tenant_id: UUID = Depends(get_current_tenant),
                 db: Session = Depends(get_db)):
     """Угоди без руху N днів — для тригера deal_stuck."""
-    from datetime import datetime, timedelta, timezone
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    from datetime import datetime, timedelta
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     return db.query(Deal).filter(
         Deal.tenant_id == tenant_id,
         Deal.stage.notin_(["won", "lost"]),
@@ -89,12 +90,12 @@ def move_stage(deal_id: UUID, stage: str, loss_reason: str | None = None,
     # фаза 6.3: ймовірність синхронізується зі стадією воронки
     d.probability = {"new": 10, "contacted": 30, "negotiation": 60,
                      "won": 100, "lost": 0}.get(stage, d.probability or 0)
-    from datetime import datetime, timezone
-    d.last_activity_at = datetime.now(timezone.utc)
+    from datetime import datetime
+    d.last_activity_at = datetime.now(UTC)
     if stage == "won":
-        d.won_at = datetime.now(timezone.utc)
+        d.won_at = datetime.now(UTC)
     if stage == "lost":
-        d.lost_at = datetime.now(timezone.utc)
+        d.lost_at = datetime.now(UTC)
         d.loss_reason = loss_reason
     db.flush()
     # Тригеры deal_won / deal_lost
@@ -131,6 +132,8 @@ def convert_to_order(deal_id: UUID, data: ConvertIn,
         order = db.query(Order).filter(Order.id == d.converted_order_id).first()
         return {"order_id": str(order.id), "deduplicated": True}
     client = db.query(Client).filter(Client.id == d.client_id).first()
+    if not client:
+        raise HTTPException(404, "Клієнта угоди не знайдено")
     order = Order(tenant_id=user.tenant_id, client_id=d.client_id,
                   deal_id=d.id, source="manual",
                   external_id=f"deal-{d.id}",

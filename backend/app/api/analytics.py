@@ -5,7 +5,7 @@
 """
 
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"],
 @router.get("/kpi")
 def kpi(tenant_id: UUID = Depends(get_current_tenant),
         db: Session = Depends(get_db)):
-    since = datetime.now(timezone.utc) - timedelta(days=30)
+    since = datetime.now(UTC) - timedelta(days=30)
     new_leads = db.query(Client).filter(
         Client.tenant_id == tenant_id, Client.created_at >= since).count()
     total = db.query(Deal).filter(Deal.tenant_id == tenant_id).count() or 1

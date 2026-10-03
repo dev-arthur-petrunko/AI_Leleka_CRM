@@ -2,7 +2,7 @@
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -92,7 +92,7 @@ def register(request: Request, data: RegisterTenantIn,
     try:
         check_password_policy(data.password)
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     if db.query(Tenant).filter(Tenant.slug == data.slug).first():
         raise HTTPException(400, "slug already taken")
     tenant = Tenant(name=data.tenant_name, slug=data.slug)
@@ -127,8 +127,8 @@ def login(request: Request, form: OAuth2PasswordRequestForm = Depends(),
         user = users[0] if users else None
     if not user or not verify_password(form.password, user.password_hash):
         raise HTTPException(401, "Invalid credentials")
-    _check_totp(user, form.scopes and " ".join(form.scopes) or "")
-    user.last_login_at = datetime.now(timezone.utc)
+    _check_totp(user, (form.scopes and " ".join(form.scopes)) or "")
+    user.last_login_at = datetime.now(UTC)
     db.commit()
     out = _tokens(user)
     return out
@@ -148,7 +148,7 @@ def refresh(data: RefreshIn, db: Session = Depends(get_db)):
     try:
         payload = decode_token(data.refresh_token, expect_type="refresh")
     except JWTError:
-        raise HTTPException(401, "Invalid refresh token")
+        raise HTTPException(401, "Invalid refresh token") from None
     user = db.query(User).filter(User.id == UUID(payload["sub"])).first()
     if (not user or not user.is_active
             or user.token_version != payload.get("ver", -1)):
@@ -165,7 +165,7 @@ def change_password(data: ChangePasswordIn,
     try:
         check_password_policy(data.new_password)
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     user.password_hash = hash_password(data.new_password)
     user.must_change_password = False
     user.token_version += 1  # відкликати всі старі токени
@@ -182,7 +182,7 @@ def password_reset_request(request: Request, data: ResetRequestIn,
     digest = hashlib.sha256(raw.encode()).hexdigest()
     db.add(PasswordResetToken(
         email=data.email, token_hash=digest,
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=30)))
+        expires_at=datetime.now(UTC) + timedelta(minutes=30)))
     db.commit()
     _send_reset_email(data.email, raw, db)
     return {"ok": True}
@@ -190,8 +190,9 @@ def password_reset_request(request: Request, data: ResetRequestIn,
 
 def _send_reset_email(email: str, raw_token: str, db: Session):
     """Через першу активну SMTP-інтеграцію; інакше — у лог (демо-режим)."""
-    import logging
+    import logging as _logging
 
+    log = _logging.getLogger("leleka.auth")
     from app.models import Integration
 
     row = db.query(Integration).filter(
@@ -206,9 +207,9 @@ def _send_reset_email(email: str, raw_token: str, db: Session):
                 email, "Скидання пароля Leleka",
                 f"Токен для скидання (30 хв): {raw_token}")
             return
-        except Exception as e:  # noqa: BLE001
-            logging.warning("reset email failed: %s", e)
-    logging.warning("RESET-TOKEN for %s: %s (демо: нема SMTP)", email, raw_token)
+        except Exception as e:
+            log.warning("reset email failed: %s", e)
+    log.warning("RESET-TOKEN for %s: [приховано] (демо: нема SMTP)")
 
 
 @router.post("/password-reset-confirm")
@@ -218,12 +219,12 @@ def password_reset_confirm(request: Request, data: ResetConfirmIn,
     digest = hashlib.sha256(data.token.encode()).hexdigest()
     row = db.query(PasswordResetToken).filter(
         PasswordResetToken.token_hash == digest, PasswordResetToken.used.is_(False)).first()
-    if not row or row.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    if not row or row.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
         raise HTTPException(400, "Токен невалідний або прострочений")
     try:
         check_password_policy(data.new_password)
     except ValueError as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, str(e)) from None
     users = db.query(User).filter(User.email == row.email).all()
     for u in users:
         u.password_hash = hash_password(data.new_password)
@@ -259,7 +260,7 @@ def totp_enable(data: TotpEnableIn, user: User = Depends(_owner_admin),
     try:
         secret = decrypt_credentials({"enc": user.totp_secret})["v"]
     except Exception:
-        raise HTTPException(400, "Спочатку /2fa/setup")
+        raise HTTPException(400, "Спочатку /2fa/setup") from None
     if not pyotp.TOTP(secret).verify(data.code, valid_window=1):
         raise HTTPException(400, "Невірний код")
     return {"ok": True, "message": "2FA увімкнено (вимикається скиданням секрету)"}
@@ -321,7 +322,7 @@ def telegram_login(data: TelegramIn, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(401, "Bad initData")
+        raise HTTPException(401, "Bad initData") from None
     user = db.query(User).filter(User.telegram_id == tg_id).first() if tg_id else None
     if not user:
         raise HTTPException(404, "Привʼяжіть Telegram у налаштуваннях (POST /auth/telegram/link)")

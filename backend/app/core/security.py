@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 import bcrypt
 from cryptography.fernet import Fernet, InvalidToken
@@ -25,7 +25,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(sub: str, tenant_id: str, role: str,
                         token_version: int = 0) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(
+    expire = datetime.now(UTC) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     payload = {"sub": sub, "tenant_id": tenant_id, "role": role,
@@ -35,7 +35,7 @@ def create_access_token(sub: str, tenant_id: str, role: str,
 
 def create_refresh_token(sub: str, tenant_id: str,
                          token_version: int = 0) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    expire = datetime.now(UTC) + timedelta(days=7)
     payload = {"sub": sub, "tenant_id": tenant_id, "ver": token_version,
                "type": "refresh", "exp": expire}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

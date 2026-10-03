@@ -21,9 +21,7 @@ def _conditions_ok(rule: AutomationRule, event: dict) -> bool:
     if "stages" in cfg and event.get("stage") not in cfg["stages"]:
         return False
     # фильтр мин. суммы: {"min_amount": 1000}
-    if "min_amount" in cfg and (event.get("amount") or 0) < cfg["min_amount"]:
-        return False
-    return True
+    return not ("min_amount" in cfg and (event.get("amount") or 0) < cfg["min_amount"])
 
 
 def run_automations(
@@ -51,7 +49,7 @@ def run_automations(
             actions.execute(db, tenant_id, rule, event)
             ms = int((time.perf_counter() - start) * 1000)
             logs.append(_write_log(db, tenant_id, rule, event, "success", None, ms))
-        except Exception as e:  # noqa: BLE001 — обязаны залогировать, не уронить запрос
+        except Exception as e:
             ms = int((time.perf_counter() - start) * 1000)
             logs.append(_write_log(db, tenant_id, rule, event, "failed", str(e), ms))
     db.commit()

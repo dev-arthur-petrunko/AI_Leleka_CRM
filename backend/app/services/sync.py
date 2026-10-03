@@ -1,6 +1,6 @@
 """Polling-синхронізація з курсором (фаза 3.3): стани, рух курсора після успіху, 429."""
 
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 
 from sqlalchemy.orm import Session
 
@@ -19,12 +19,12 @@ def get_state(db: Session, row: Integration) -> SyncState:
 
 def _mark_ok(db: Session, row, st) -> None:
 
-    st.cursor = datetime.now(timezone.utc).isoformat()
-    st.last_success_at = datetime.now(timezone.utc)
+    st.cursor = datetime.now(UTC).isoformat()
+    st.last_success_at = datetime.now(UTC)
     st.last_error = None
     st.consecutive_failures = 0
     row.status, row.last_error = "ok", None
-    row.last_sync_at = datetime.now(timezone.utc)
+    row.last_sync_at = datetime.now(UTC)
     db.commit()
 
 
@@ -64,7 +64,7 @@ def sync_integration(db: Session, integration_id) -> dict:
         _mark_ok(db, row, st)
         db.commit()
         return {"ok": True, "imported": n}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         st.consecutive_failures = (st.consecutive_failures or 0) + 1
         st.last_error = str(e)[:500]
         msg = str(e)
