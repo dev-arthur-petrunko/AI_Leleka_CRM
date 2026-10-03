@@ -363,5 +363,23 @@ def me(user: User = Depends(get_current_user)):
         "tenant_id": str(user.tenant_id),
         "email": user.email,
         "role": user.role,
+        "full_name": user.full_name,
+        "preferences": user.preferences or {},
         "must_change_password": user.must_change_password,
     }
+
+
+class PreferencesIn(BaseModel):
+    preferences: dict
+
+
+@router.patch("/me/preferences")
+def save_preferences(data: PreferencesIn,
+                     user: User = Depends(get_current_user),
+                     db: Session = Depends(get_db)):
+    """Налаштування вигляду (тема, сайдбар) — сервер, синхронізація між пристроями."""
+    merged = dict(user.preferences or {})
+    merged.update(data.preferences or {})
+    user.preferences = merged
+    db.commit()
+    return {"ok": True, "preferences": merged}

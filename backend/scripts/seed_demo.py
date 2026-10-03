@@ -6,6 +6,8 @@
 """
 
 import argparse
+import os
+import random
 from datetime import datetime, timedelta, timezone
 
 from app.core.security import hash_password
@@ -14,6 +16,9 @@ from app.models import (Client, Conversation, Deal, Message, Order, Task, Tenant
                         User)
 
 SLUG = "demo"
+# UI-18: детермінованість — фіксоване зерно і фіксована «сьогодні» в демо-режимі
+random.seed(42)
+DEMO_NOW = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
 
 
 def seed(force: bool = False):
@@ -39,7 +44,7 @@ def seed(force: bool = False):
                          full_name="Власник", role="owner", email_confirmed=True)
             db.add(owner)
             db.flush()
-        now = datetime.now(timezone.utc)
+        now = DEMO_NOW if os.environ.get("DEMO_MODE") == "1" else datetime.now(timezone.utc)
         clients = []
         for name, phone, seg in [("Олена", "+380501111111", "vip"),
                                  ("Тарас", "+380502222222", "regular"),

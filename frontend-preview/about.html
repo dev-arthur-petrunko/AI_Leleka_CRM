@@ -160,12 +160,20 @@ footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
   .quote .wrap{grid-template-columns:1fr}
 }
 </style>
+<meta property="og:title" content="AI Leleka CRM — лелека не дасть загубити жодну заявку">
+<meta property="og:description" content="CRM для українського інтернет-магазину: Prom, Rozetka, Нова Пошта, AI.">
+<meta property="og:image" content="assets/leleka-hero.png">
 </head>
 <body>
 
 <header>
   <div class="wrap">
     <div class="brand"><img src="assets/leleka-mascot.png" alt="Лелека"> AI Leleka CRM</div>
+    <nav style="display:flex;gap:16px;font-size:14px">
+      <a href="#pricing" style="color:#fff;text-decoration:none">Тарифи</a>
+      <a href="#faq" style="color:#fff;text-decoration:none">Питання</a>
+      <a href="#contacts" style="color:#fff;text-decoration:none">Контакти</a>
+    </nav>
     <a class="login" href="login.html">Увійти →</a>
   </div>
 </header>
@@ -173,7 +181,7 @@ footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
 <section class="hero">
   <div class="wrap">
     <div>
-      <h1>Лелека приносить <span>клієнтів.</span></h1>
+      <h1>Лелека не дасть загубити <span>жодну заявку.</span></h1>
       <p class="payoff">А ви — тільки берете слухавку.</p>
       <p>Заявки з Prom, Rozetka чи форми на сайті самі падають у чергу. AI сортує, хто гарячий, а хто просто дивився. Відкриваєте CRM раз на день — і одразу бачите, кому дзвонити зараз.</p>
       <div class="ctas">
@@ -242,13 +250,13 @@ footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
 
 <section class="demo">
   <div class="wrap">
-    <h2>Живий кабінет — приклад дашборда</h2>
-    <p class="sub">Справжній дашборд з прикладом даних. Натисніть, щоб відкрити демо повністю.</p>
-    <a class="frame" href="dashboard.html">
-      <iframe src="dashboard.html" title="Приклад дашборда" loading="lazy"></iframe>
+    <h2>Дивитись демо — новий кабінет</h2>
+    <p class="sub">Справжній кабінет у темі «Ранок». Натисніть, щоб відкрити демо повністю.</p>
+    <a class="frame" href="http://localhost:5174/">
+      <img src="assets/leleka-ai.png" alt="Демо кабінету" style="width:100%;max-height:420px;object-fit:cover">
     </a>
     <div class="ctas" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:20px">
-      <a class="btn btn-primary" href="dashboard.html">Відкрити живе демо →</a>
+      <a class="btn btn-primary" href="http://localhost:5174/">Дивитись демо →</a>
     </div>
   </div>
 </section>
@@ -285,6 +293,7 @@ footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
         <h3>Team</h3>
         <div class="price">300 ₴ <small>/ місце · міс</small></div>
         <p class="pitch">Для команди, що вже виросла з Excel</p>
+        <p class="pitch" style="font-size:12.5px">знижка від 5 місць — тому дешевше за Pro</p>
         <ul><li>5+ місць</li><li>+ Checkbox ПРРО</li><li>Пріоритетна підтримка</li></ul>
         <a class="btn btn-ghost" href="login.html?mode=register&plan=team">Обрати Team</a>
       </div>
@@ -298,8 +307,16 @@ footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
     <div>
       <h3>Лелека на зв'язку 📞</h3>
       <p>Підтримка українською у вашому часовому поясі. Допоможемо переїхати з Excel і налаштуємо перші автоматизації разом — безкоштовно, до того як ви щось оплатите.</p>
-      <a class="btn btn-primary" href="dashboard.html">Відкрити демо</a>
+      <a class="btn btn-primary" href="#contacts">Написати в Telegram</a>
     </div>
+  </div>
+</section>
+
+<section class="steps" id="faq">
+  <div class="wrap">
+    <h2>Часті питання</h2>
+    <div class="step-row"><div class="num">?</div><div><h4>Що буде після Free?</h4><p>Нічого не зламається: кабінет лишиться, AI і маркетплейси попросять Pro.</p></div></div>
+    <div class="step-row"><div class="num">?</div><div><h4>Чи можна рахунок на ФОП/ТОВ?</h4><p>Так — LiqPay і Monobank виставляють рахунки, деталі уточнить підтримка.</p></div></div>
   </div>
 </section>
 
@@ -310,7 +327,10 @@ footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
   </div>
 </section>
 
-<footer>AI Leleka CRM · зроблено в Україні</footer>
+<footer id="contacts">AI Leleka CRM · зроблено в Україні<br>
+<a href="privacy.html" style="color:inherit">Конфіденційність та оферта</a> ·
+підтримка: <a href="mailto:hello@leleka.crm" style="color:inherit">hello@leleka.crm</a> ·
+<a href="login.html?mode=register" style="color:inherit">Бета: приєднуйтесь</a></footer>
 
 </body>
 </html>

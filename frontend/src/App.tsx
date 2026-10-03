@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BarChart3, Bell, Inbox, KanbanSquare, Moon, Package, Settings as SettingsIcon,
-  ShoppingCart, Sun, Users, CheckSquare, Home, Plus,
+  BarChart3, Bell, CheckSquare, ChevronLeft, ChevronRight, Home, Inbox, KanbanSquare,
+  Moon, Package, Plug, Settings as SettingsIcon, ShoppingCart, Sun, Users, Plus,
 } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import Deals from './pages/Deals';
@@ -21,17 +21,23 @@ import { applyTheme, loadMode, resolveTheme, saveMode, ThemeMode } from './theme
 import { t } from './i18n';
 
 const NAV = [
-  { to: '/', label: t('nav.today'), icon: Home },
-  { to: '/inbox', label: t('nav.inbox'), icon: Inbox },
-  { to: '/deals', label: t('nav.deals'), icon: KanbanSquare },
-  { to: '/orders', label: t('nav.orders'), icon: ShoppingCart },
-  { to: '/clients', label: t('nav.clients'), icon: Users },
-  { to: '/tasks', label: t('nav.tasks'), icon: CheckSquare },
-  { to: '/products', label: t('nav.products'), icon: Package },
-  { to: '/analytics', label: t('nav.analytics'), icon: BarChart3 },
-  { to: '/integrations', label: t('nav.integrations'), icon: SettingsIcon },
-  { to: '/settings', label: t('nav.settings'), icon: SettingsIcon },
+  { to: '/', label: t('nav.today'), icon: Home, badge: null },
+  { to: '/inbox', label: t('nav.inbox'), icon: Inbox, badge: 'inbox' },
+  { to: '/deals', label: t('nav.deals'), icon: KanbanSquare, badge: null },
+  { to: '/orders', label: t('nav.orders'), icon: ShoppingCart, badge: 'orders' },
+  { to: '/clients', label: t('nav.clients'), icon: Users, badge: null },
+  { to: '/tasks', label: t('nav.tasks'), icon: CheckSquare, badge: 'tasks' },
+  { to: '/products', label: t('nav.products'), icon: Package, badge: null },
+  { to: '/analytics', label: t('nav.analytics'), icon: BarChart3, badge: null },
+  { to: '/integrations', label: t('nav.integrations'), icon: Plug, badge: 'integrations' },
+  { to: '/settings', label: t('nav.settings'), icon: SettingsIcon, badge: null },
 ];
+const CRUMBS: Record<string, string> = {
+  '': 'Головна', inbox: 'Вхідні', deals: 'Угоди', orders: 'Замовлення', clients: 'Клієнти',
+  tasks: 'Завдання', products: 'Товари', feedhub: 'Товари', analytics: 'Аналітика',
+  integrations: 'Інтеграції', settings: 'Налаштування', login: 'Вхід',
+};
+const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
 const MOBILE = ['/', '/deals', '/orders', '/inbox', '/more'];
 
 function ThemeToggle({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode) => void }) {
@@ -140,27 +146,123 @@ export default function App() {
     return () => window.removeEventListener('keydown', h);
   }, []);
   const crumbs = loc.pathname.split('/').filter(Boolean);
+  const [collapsed, setCollapsedState] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem('leleka.sidebar');
+      if (v) return v === '1';
+    } catch { /* ignore */ }
+    return typeof window !== 'undefined' ? window.innerWidth < 1024 && window.innerWidth >= 768 : false;
+  });
+  const [badges, setBadges] = useState<Record<string, number | boolean>>({});
+  const [me, setMe] = useState<any>(null);
+  function setCollapsed(v: boolean) {
+    setCollapsedState(v);
+    try { localStorage.setItem('leleka.sidebar', v ? '1' : '0'); } catch { /* ignore */ }
+    import('./api').then(({ api }) => api('/auth/me/preferences', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferences: { sidebar_collapsed: v } }),
+    }));
+  }
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); setCollapsed(!collapsed); }
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  });
+  useEffect(() => {
+    (async () => {
+      const { api } = await import('./api');
+      const [tasks, convs, orders, integ, meResp] = await Promise.all([
+        api<any[]>('/tasks?status=open&limit=200'), api<any[]>('/inbox/conversations?limit=100'),
+        api<{ items: any[] }>('/orders?status=new&limit=100'), api<any[]>('/integrations'),
+        api<any>('/auth/me'),
+      ]);
+      const now = Date.now();
+      setBadges({
+        tasks: (tasks || []).filter((x: any) => x.due_at && new Date(x.due_at).getTime() < now).length,
+        inbox: (convs || []).length,
+        orders: (orders?.items || []).length,
+        integrations: (integ || []).some((x: any) => x.status && x.status !== 'ok'),
+      });
+      if (meResp) setMe(meResp);
+    })();
+  }, [loc.pathname]);
   return (
     <>
-      <div className="auroras"><span /><span /><span /></div>
       <div style={{ display: 'flex', minHeight: '100vh' }}>
-        <aside className="glass sidebar" style={{ width: 240, margin: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: 12, height: 'calc(100vh - 24px)' }}>
-          <b style={{ padding: '6px 10px 14px' }}>◈ Leleka</b>
-          {NAV.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} style={({ isActive }) => ({
-              display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 10,
-              color: isActive ? 'var(--link)' : 'var(--text)', textDecoration: 'none',
-              background: isActive ? 'var(--bg-hover)' : 'transparent', fontWeight: isActive ? 700 : 400,
-            })}>
-              <Icon size={18} />{label}
-            </NavLink>
-          ))}
+        <aside className="glass sidebar" aria-label="Головне меню"
+          style={{ width: collapsed ? 64 : 240, margin: 12, padding: 14,
+            display: 'flex', flexDirection: 'column', gap: 2, position: 'sticky', top: 12,
+            height: 'calc(100vh - 24px)', transition: 'width var(--dur-200,200ms) var(--ease-out, ease-out)',
+            overflow: 'hidden' }}>
+          <Link to="/" style={{ display: 'flex', gap: 10, alignItems: 'center',
+            padding: '6px 10px 14px', color: 'var(--text)', textDecoration: 'none' }}>
+            <img src="/assets/brand/logo-mark.png" alt="AI Leleka CRM" width={30} height={30}
+              style={{ borderRadius: 8, flex: 'none' }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            {!collapsed && <b>AI Leleka CRM</b>}
+          </Link>
+          {NAV.map(({ to, label, icon: Icon, badge }) => {
+            const n = badge ? Number(badges[badge] || 0) : 0;
+            const dot = badge === 'integrations' && badges[badge] === true;
+            return (
+              <NavLink key={to} to={to} title={label}
+                style={({ isActive }) => ({
+                  display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 10,
+                  color: isActive ? 'var(--primary)' : 'var(--text)', textDecoration: 'none',
+                  background: isActive ? 'var(--bg-hover)' : 'transparent',
+                  fontWeight: isActive ? 700 : 400, whiteSpace: 'nowrap', position: 'relative',
+                })}>
+                <Icon size={18} aria-hidden />
+                {!collapsed && label}
+                {badge && (n > 0 || dot) && (
+                  collapsed
+                    ? <span aria-label={`${label}: ${n || 'помилка'}`}
+                        style={{ position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16,
+                          borderRadius: 8, background: 'var(--danger)', color: '#fff',
+                          fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', padding: '0 4px' }}>
+                        {dot ? '' : n > 9 ? '9+' : n}</span>
+                    : <span style={{ marginLeft: 'auto', minWidth: 20, height: 20, borderRadius: 10,
+                        background: badge === 'tasks' ? 'var(--danger)' : 'var(--primary)',
+                        color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex',
+                        alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>
+                        {dot ? '!' : n > 99 ? '99+' : n}</span>
+                )}
+              </NavLink>
+            );
+          })}
+          <div style={{ flex: 1 }} />
+          {!collapsed && me && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 10px',
+              borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 700, color: 'var(--text)' }}>{me.full_name || me.email}</div>
+              <div>{me.role}</div>
+            </div>
+          )}
+          {!collapsed && (
+            <Link to="/settings" style={{ fontSize: 12, color: 'var(--link)', padding: '4px 10px' }}>
+              Допомога
+            </Link>
+          )}
+          <button onClick={() => setCollapsed(!collapsed)}
+            aria-expanded={!collapsed} aria-controls="sidebar" aria-label="Згорнути меню (Ctrl+B)"
+            title="Згорнути меню (Ctrl+B)"
+            style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)',
+              borderRadius: 10, padding: 8, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
         </aside>
         <div style={{ flex: 1, minWidth: 0 }}>
           <header className="glass" style={{ margin: '12px 12px 0', padding: '10px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Leleka{crumbs.map((c) => ` / ${c}`).join('')}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+              {['Головна', ...crumbs.map((c) => CRUMBS[c] || c)].join(' / ')}
+            </span>
             <span style={{ flex: 1 }} />
-            <button onClick={() => setPalette(true)} aria-label="Пошук" style={iconBtn}>⌘K</button>
+            <button onClick={() => setPalette(true)} aria-label={isMac ? 'Пошук (⌘K)' : 'Пошук (Ctrl K)'}
+              title={isMac ? '⌘K' : 'Ctrl K'} style={iconBtn}>{isMac ? '⌘K' : 'Ctrl K'}</button>
             <CreateMenu />
             <button aria-label="Сповіщення" style={iconBtn}><Bell size={18} /></button>
             <button onClick={() => setMode(mode === 'evening' ? 'morning' : 'evening')}

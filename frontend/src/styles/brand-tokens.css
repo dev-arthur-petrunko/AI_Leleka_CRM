@@ -1,0 +1,51 @@
+/* Єдині бренд-токени (імпортують і додаток, і about.html — щоб не розходились).
+   Джерело: docs/brand.md (виписано з лендингу). */
+:root,
+:root[data-theme="evening"] {            /* Вечір: тепла темно-коричнева */
+  --bg:          #17110c;
+  --bg-elevated: #231a12;
+  --bg-hover:    #2e2318;
+  --border:      #3d2f1f;
+  --text:        #F7F2E9;
+  --text-muted:  #C9BBA9;
+  --link:        #E08A52;
+  --primary:     #D46936;
+  --primary-fg:  #ffffff;
+  --success:     #3ddc84;
+  --warning:     #f5a623;
+  --danger:      #e0684e;
+  --info:        #7aa8e8;
+  --stage-new: #5B7C99; --stage-contacted: #2C8FB8; --stage-negotiation: #D9822B;
+  --stage-won: #3E7A4B; --stage-lost: #B04A4A;
+  --chart-grid:  #3d2f1f;
+  --shadow:      0 1px 2px rgba(0,0,0,.4);
+  --r-sm: 8px; --r-md: 12px; --r-lg: 20px;
+  color-scheme: dark;
+}
+
+:root[data-theme="morning"] {            /* Ранок: крем + теракот */
+  --bg:          #F7F2E9;
+  --bg-elevated: #FFFDF9;
+  --bg-hover:    #EFE6D4;
+  --border:      #E4D7C1;
+  --text:        #251A10;
+  --text-muted:  #6B5C4B;
+  --link:        #BD5A2A;
+  --primary:     #BD5A2A;
+  --primary-fg:  #ffffff;
+  --success:     #1f9d55;
+  --warning:     #c77700;
+  --danger:      #d63939;
+  --info:        #2b7de9;
+  --stage-new: #5B7C99; --stage-contacted: #2C8FB8; --stage-negotiation: #D9822B;
+  --stage-won: #3E7A4B; --stage-lost: #B04A4A;
+  --chart-grid:  #E4D7C1;
+  --shadow:      0 1px 3px rgba(37,26,16,.08);
+  color-scheme: light;
+}
+
+/* Рух (розділ 3.4 ТЗ): тільки transform/opacity */
+:root {
+  --dur-120: 120ms; --dur-200: 200ms; --dur-320: 320ms; --dur-600: 600ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
