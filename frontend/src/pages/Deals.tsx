@@ -33,6 +33,19 @@ export default function Deals() {
   const [convertFor, setConvertFor] = useState<Deal | null>(null);
   const [lossFor, setLossFor] = useState<Deal | null>(null);
   const [lossReason, setLossReason] = useState<string>(LOSS_REASONS[0]);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<{ col: string; index: number } | null>(null);
+
+  function dropIndex(e: React.DragEvent, col: Deal[]): number {
+    const els = Array.from(
+      (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[data-deal]'));
+    const visible = els.filter((el) => !el.classList.contains('drag-src'));
+    for (let i = 0; i < visible.length; i++) {
+      const r = visible[i].getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) return i;
+    }
+    return visible.length;
+  }
   const [undo, setUndo] = useState<null | { id: string; prev: string }>(null);
   const qc = useQueryClient();
   const celebration = useDealWonCelebration();
@@ -126,39 +139,75 @@ export default function Deals() {
             const sum = col.reduce((a, d) => a + d.amount, 0);
             const wsum = col.reduce((a, d) => a + d.amount * (STAGE_PROB[s] / 100), 0);
             return (
-              <div key={s} className="glass" onDragOver={(e) => e.preventDefault()}
+              <div key={s} className="glass"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setOver({ col: s, index: dropIndex(e, col) });
+                }}
+                onDragLeave={() => setOver((o) => (o && o.col === s ? null : o))}
                 onDrop={(e) => {
+                  e.preventDefault();
                   const id = e.dataTransfer.getData('text/plain');
+                  setOver(null);
+                  setDragId(null);
                   const el = document.querySelector(`[data-deal="${id}"]`) as HTMLElement | null;
                   if (s === 'lost') {
                     const d = deals.find((x) => x.id === id);
                     if (d) setLossFor(d);
                   } else move(id, s, { userInitiated: true, el });
                 }}
-                style={{ padding: 10, minHeight: 220, borderTop: `4px solid ${STAGE_COLOR[s]}` }}>
+                style={{ padding: 10, minHeight: 220, borderTop: `4px solid ${STAGE_COLOR[s]}`,
+                  outline: over?.col === s ? '2px dashed var(--link)' : 'none',
+                  transition: 'outline .15s ease' }}>
                 <h4 title={`Взвішена: ${Math.round(wsum).toLocaleString('uk-UA')} ₴`}>
                   {t('stage.' + s)} · {col.length} · <span className="num">{Math.round(sum).toLocaleString('uk-UA')} ₴</span>
                 </h4>
-                {col.length === 0 && (
+                {col.length === 0 && !(over?.col === s) && (
                   <div style={{ border: '1.5px dashed var(--border)', borderRadius: 10, padding: 16,
                     textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Перетягніть сюди</div>
                 )}
-                {col.map((d) => (
-                  <div key={d.id} data-deal={d.id} className="glass" draggable
-                    onDragStart={(e) => e.dataTransfer.setData('text/plain', d.id)}
-                    style={{ padding: 11, marginBottom: 9, cursor: 'grab',
-                      borderLeft: `4px solid ${d.stage === 'won' ? 'var(--stage-won)' : 'var(--stage-negotiation)'}` }}>
-                    <b>{d.title.replace(/^Замовлення\s*#?/, 'Угода #')}</b>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.id.slice(0, 8)}</div>
-                    <div style={{ margin: '6px 0' }}><PriorityChip score={scoreOf(d.id)} /></div>
-                    <div className="num" style={{ fontSize: 19, fontWeight: 800 }}>
-                      {Math.round(d.amount).toLocaleString('uk-UA')} ₴</div>
-                    {d.stage === 'won' && !d.converted_order_id && (
-                      <button onClick={() => setConvertFor(d)}>→ замовлення</button>
-                    )}
-                    {d.converted_order_id && <Badge tone="ok">Замовлення ✓</Badge>}
-                  </div>
-                ))}
+                {col.flatMap((d, i) => {
+                  const card = (
+                    <div key={d.id} data-deal={d.id}
+                      className={'glass' + (dragId === d.id ? ' drag-src' : '')} draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', d.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDragId(d.id);
+                      }}
+                      onDragEnd={() => { setDragId(null); setOver(null); }}
+                      style={{ padding: 11, marginBottom: 9, cursor: 'grab',
+                        borderLeft: `4px solid ${d.stage === 'won' ? 'var(--stage-won)' : 'var(--stage-negotiation)'}`,
+                        transition: 'transform .18s ease, box-shadow .18s ease, opacity .18s ease',
+                        ...(dragId === d.id
+                          ? { transform: 'rotate(2deg) scale(1.04)', boxShadow: '0 12px 26px rgba(0,0,0,.3)', opacity: 0.85 }
+                          : {}) }}>
+                      <b>{d.title.replace(/^Замовлення\s*#?/, 'Угода #')}</b>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.id.slice(0, 8)}</div>
+                      <div style={{ margin: '6px 0' }}><PriorityChip score={scoreOf(d.id)} /></div>
+                      <div className="num" style={{ fontSize: 19, fontWeight: 800 }}>
+                        {Math.round(d.amount).toLocaleString('uk-UA')} ₴</div>
+                      {d.stage === 'won' && !d.converted_order_id && (
+                        <button onClick={() => setConvertFor(d)}>→ замовлення</button>
+                      )}
+                      {d.converted_order_id && <Badge tone="ok">Замовлення ✓</Badge>}
+                    </div>
+                  );
+                  const ph = (over?.col === s && over.index === i) ? (
+                    <div key={'ph-' + d.id} style={{ height: 86, borderRadius: 12, marginBottom: 9,
+                      border: '2px dashed var(--link)', background: 'var(--bg-hover)',
+                      animation: 'phIn .18s ease-out' }} />
+                  ) : null;
+                  return [ph, card];
+                })}
+                {over?.col === s && over.index >= col.length && (
+                  <div style={{ height: 86, borderRadius: 12, marginBottom: 9,
+                    border: '2px dashed var(--link)', background: 'var(--bg-hover)',
+                    animation: 'phIn .18s ease-out' }} />
+                )}
+                <style>{`@keyframes phIn{from{opacity:0;transform:scaleY(.6)}to{opacity:1;transform:none}}
+                  .drag-src{pointer-events:none}
+                  @media (prefers-reduced-motion: reduce){div{animation:none!important;transition:none!important}}`}</style>
               </div>
             );
           })}

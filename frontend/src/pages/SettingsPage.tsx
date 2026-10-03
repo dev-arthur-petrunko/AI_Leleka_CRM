@@ -15,6 +15,10 @@ export default function SettingsPage() {
     try { return (localStorage.getItem('leleka.themeMode') as ThemeMode) || 'auto-time'; }
     catch { return 'auto-time'; }
   });
+  const [anim, setAnim] = useState<string>(() => {
+    try { return localStorage.getItem('leleka.animations') || 'all'; }
+    catch { return 'all'; }
+  });
   const me = useQuery({ queryKey: ['me'], queryFn: () => api<any>('/auth/me') });
   function pick(m: ThemeMode) {
     setMode(m);
@@ -29,6 +33,21 @@ export default function SettingsPage() {
           {MODES.map((m) => (
             <Button key={m} variant={mode === m ? 'primary' : 'ghost'} onClick={() => pick(m)}>
               {MODE_LABEL[m]}
+            </Button>
+          ))}
+        </div>
+        <h3 style={{ marginTop: 16 }}>Анімації</h3>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[['all', 'Усі'], ['min', 'Мінімум'], ['off', 'Вимкнено']].map(([v, label]) => (
+            <Button key={v} variant={anim === v ? 'primary' : 'ghost'}
+              onClick={async () => {
+                setAnim(v);
+                try { localStorage.setItem('leleka.animations', v); } catch { /* ignore */ }
+                await api('/auth/me/preferences', { method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ preferences: { animations: v } }) });
+              }}>
+              {label}
             </Button>
           ))}
         </div>
