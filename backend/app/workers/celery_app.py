@@ -11,6 +11,7 @@ celery = Celery("leleka",
                 backend=os.environ.get("REDIS_URL", "redis://localhost:6379/0"))
 celery.conf.update(task_acks_late=True, worker_prefetch_multiplier=1,
                    task_reject_on_worker_lost=True)
+celery.autodiscover_tasks(["app.workers"])
 
 celery.conf.beat_schedule = {
     "webhooks-every-30s": {"task": "leleka.process_webhook_batch",
