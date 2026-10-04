@@ -1,8 +1,9 @@
 import React from 'react';
+import { Bird } from 'lucide-react';
 
 type P = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' };
 
-export function Button({ variant = 'primary', style, ...rest }: P) {
+export function Button({ variant = 'primary', style, className, ...rest }: P) {
   const base: React.CSSProperties = {
     padding: '10px 18px', borderRadius: 'var(--r-md)', fontWeight: 700, fontSize: 14,
     cursor: 'pointer', border: '1px solid transparent', minHeight: 40,
@@ -11,9 +12,10 @@ export function Button({ variant = 'primary', style, ...rest }: P) {
     variant === 'primary'
       ? { background: 'var(--primary)', color: 'var(--primary-fg)' }
       : variant === 'danger'
-        ? { background: 'var(--danger)', color: '#fff' }
+        ? { background: 'var(--danger)', color: 'var(--primary-fg)' }
         : { background: 'transparent', color: 'var(--link)', borderColor: 'var(--border)' };
-  return <button style={{ ...base, ...v, ...style }} {...rest} />;
+  return <button className={['press', className].filter(Boolean).join(' ')}
+    style={{ ...base, ...v, ...style }} {...rest} />;
 }
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -56,15 +58,17 @@ export function Badge({ tone = 'info', children }: { tone?: 'info' | 'ok' | 'war
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return <div className="glass" style={{ padding: 18, ...style }}>{children}</div>;
+export function Card({ children, style, ...rest }: {
+  children: React.ReactNode; style?: React.CSSProperties;
+} & React.HTMLAttributes<HTMLDivElement>) {
+  return <div className="glass" style={{ padding: 18, ...style }} {...rest}>{children}</div>;
 }
 
 export function Skeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div aria-busy="true" aria-label="Завантаження">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} style={{ height: 18, borderRadius: 8, background: 'var(--border)',
+        <div key={i} className="skeleton-shimmer" style={{ height: 18, borderRadius: 8, background: 'var(--border)',
           opacity: 0.5, marginBottom: 8 }} />
       ))}
     </div>
@@ -74,7 +78,8 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
   return (
     <div style={{ textAlign: 'center', padding: 28, color: 'var(--text-muted)' }}>
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{title}</div>
+      <Bird size={30} aria-hidden className="sway" style={{ color: 'var(--text-muted)', opacity: 0.7 }} />
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 6 }}>{title}</div>
       {hint && <div style={{ fontSize: 13, marginTop: 4 }}>{hint}</div>}
       {action && <div style={{ marginTop: 12 }}>{action}</div>}
     </div>

@@ -13,7 +13,7 @@ docker compose up --build
 Тести: `TEST_DATABASE_URL=... alembic upgrade head && pytest -q` з `backend/`.
 
 ## Прод
-`docker-compose.prod.yml` (БД/Redis без зовнішніх портів, gunicorn/2 воркери, worker+beat, місце під Caddy).
+`docker-compose.prod.yml` (БД/Redis без зовнішніх портів, uvicorn/2 воркери, worker+beat, місце під Caddy).
 Бекап: `scripts/backup.sh` (cron 03:00). Моніторинг: `SENTRY_DSN` опційно.
 
 ## Безпека (критично)

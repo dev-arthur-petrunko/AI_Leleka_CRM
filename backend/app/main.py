@@ -6,6 +6,7 @@ from starlette.responses import JSONResponse
 
 from app.api import (
     analytics,
+    audit,
     auth,
     automations,
     billing,
@@ -27,7 +28,28 @@ from app.api import (
 from app.core.config import frontend_origins
 from app.core.rate import limiter
 
-app = FastAPI(title="AI Leleka CRM", version="0.1.0-mvp")
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Схему більше не створює create_all() — нею володіє Alembic.
+
+    Перед стартом контейнера виконати: alembic upgrade head
+    (docker-compose command вже робить це, див. docker-compose.yml).
+    Тут лише перевіряємо, що з'єднання з БД справді живе, щоб
+    контейнер одразу впав з зрозумілою помилкою, а не на першому запиті.
+    """
+    from sqlalchemy import text
+
+    from app.db.session import engine
+
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    yield
+
+
+app = FastAPI(title="AI Leleka CRM", version="0.1.0-mvp", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(
     RateLimitExceeded,
@@ -43,6 +65,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(audit.router)
 app.include_router(clients.router)
 app.include_router(deals.router)
 app.include_router(feedhub.router)
@@ -80,23 +103,6 @@ async def request_id_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = rid
     return response
-
-
-@app.on_event("startup")
-def startup():
-    """Схему більше не створює create_all() — нею володіє Alembic.
-
-    Перед стартом контейнера виконати: alembic upgrade head
-    (docker-compose command вже робить це, див. docker-compose.yml).
-    Тут лише перевіряємо, що з'єднання з БД справді живе, щоб
-    контейнер одразу впав з зрозумілою помилкою, а не на першому запиті.
-    """
-    from sqlalchemy import text
-
-    from app.db.session import engine
-
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
 
 
 @app.get("/health")

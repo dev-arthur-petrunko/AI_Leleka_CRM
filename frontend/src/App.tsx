@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BarChart3, Bell, CheckSquare, ChevronLeft, ChevronRight, Home, Inbox, KanbanSquare,
-  Moon, Package, Plug, Settings as SettingsIcon, ShoppingCart, Sun, Users, Plus,
+  BarChart3, Bell, CheckSquare, ChevronLeft, ChevronRight, Crown, Ellipsis, Home, Inbox, KanbanSquare,
+  Moon, Package, Plug, Search, Settings as SettingsIcon, ShoppingCart, Sun, Users, Plus, Zap,
 } from 'lucide-react';
-import Dashboard from './pages/Dashboard';
 import Deals from './pages/Deals';
 import FeedHub from './pages/FeedHub';
 import Orders from './pages/Orders';
@@ -16,6 +15,11 @@ import Analytics from './pages/Analytics';
 import IntegrationsPage from './pages/IntegrationsPage';
 import SettingsPage from './pages/SettingsPage';
 import UiKit from './pages/UiKit';
+import PasswordPage from './pages/PasswordPage';
+import AutomationsPage from './pages/AutomationsPage';
+import BillingPage from './pages/BillingPage';
+import NotificationsPage from './pages/NotificationsPage';
+import logoMark from './assets/brand/logo-mark.png';
 import { login, token } from './api';
 import { applyTheme, loadMode, resolveTheme, saveMode, ThemeMode } from './theme';
 import { t } from './i18n';
@@ -29,26 +33,19 @@ const NAV = [
   { to: '/tasks', label: t('nav.tasks'), icon: CheckSquare, badge: 'tasks' },
   { to: '/products', label: t('nav.products'), icon: Package, badge: null },
   { to: '/analytics', label: t('nav.analytics'), icon: BarChart3, badge: null },
+  { to: '/automations', label: t('nav.automations'), icon: Zap, badge: null },
+  { to: '/billing', label: t('nav.billing'), icon: Crown, badge: null },
   { to: '/integrations', label: t('nav.integrations'), icon: Plug, badge: 'integrations' },
   { to: '/settings', label: t('nav.settings'), icon: SettingsIcon, badge: null },
 ];
 const CRUMBS: Record<string, string> = {
   '': 'Головна', inbox: 'Вхідні', deals: 'Угоди', orders: 'Замовлення', clients: 'Клієнти',
   tasks: 'Завдання', products: 'Товари', feedhub: 'Товари', analytics: 'Аналітика',
-  integrations: 'Інтеграції', settings: 'Налаштування', login: 'Вхід',
+  integrations: 'Інтеграції', settings: 'Налаштування', login: 'Вхід', 'ui-kit': 'UI-kit',
+  password: 'Безпека', automations: 'Автоматизації', billing: 'Тариф',
+  notifications: 'Сповіщення',
 };
 const isMac = typeof navigator !== 'undefined' && /mac/i.test(navigator.platform);
-const MOBILE = ['/', '/deals', '/orders', '/inbox', '/more'];
-
-function ThemeToggle({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode) => void }) {
-  const next = mode === 'evening' ? 'morning' : 'evening';
-  return (
-    <button aria-label="Тема" title={`${t('theme.morning')} / ${t('theme.evening')} / ${t('theme.auto')}`}
-      onClick={() => setMode(next)} style={iconBtn}>
-      {mode === 'evening' ? <Sun size={18} /> : <Moon size={18} />}
-    </button>
-  );
-}
 
 const iconBtn: React.CSSProperties = {
   background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)',
@@ -88,10 +85,12 @@ function Palette({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (q.length < 2) return;
     const tm = setTimeout(async () => {
-      const { api: call } = await import('./api');
-      const r = await call<{ clients: any[]; deals: any[]; orders: any[] }>(
-        `/search?q=${encodeURIComponent(q)}`);
-      if (r) setRes({ clients: r.clients || [], deals: r.deals || [], orders: r.orders || [] });
+      try {
+        const { api: call } = await import('./api');
+        const r = await call<{ clients: any[]; deals: any[]; orders: any[] }>(
+          `/search?q=${encodeURIComponent(q)}`);
+        if (r) setRes({ clients: r.clients || [], deals: r.deals || [], orders: r.orders || [] });
+      } catch { /* помилка пошуку — тихо ігноруємо, список лишається порожнім */ }
     }, 250);
     return () => clearTimeout(tm);
   }, [q]);
@@ -101,9 +100,9 @@ function Palette({ onClose }: { onClose: () => void }) {
       <div className="glass" onClick={(e) => e.stopPropagation()} style={{ width: 520, maxWidth: '92vw', height: 'fit-content', padding: 16 }}>
         <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Клієнти, угоди, замовлення… (Esc)"
           style={{ width: '100%', padding: 12, borderRadius: 10 }} onKeyDown={(e) => e.key === 'Escape' && onClose()} />
-        {res.clients.map((c: any) => <div key={c.id} onClick={() => go('/clients')} style={{ padding: '6px 0', cursor: 'pointer' }}>👤 {c.name} · {c.phone || ''}</div>)}
-        {res.deals.map((d: any) => <div key={d.id} onClick={() => go('/deals')} style={{ padding: '6px 0', cursor: 'pointer' }}>🤝 {d.title}</div>)}
-        {res.orders.map((o: any) => <div key={o.id} onClick={() => go('/orders')} style={{ padding: '6px 0', cursor: 'pointer' }}>🧾 {o.number}</div>)}
+        {res.clients.map((c: any) => <div key={c.id} onClick={() => go('/clients')} style={{ padding: '6px 0', cursor: 'pointer' }}>Клієнт: {c.name} · {c.phone || ''}</div>)}
+        {res.deals.map((d: any) => <div key={d.id} onClick={() => go('/deals')} style={{ padding: '6px 0', cursor: 'pointer' }}>Угода: {d.title}</div>)}
+        {res.orders.map((o: any) => <div key={o.id} onClick={() => go('/orders')} style={{ padding: '6px 0', cursor: 'pointer' }}>Замовлення: {o.number}</div>)}
         <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, color: 'var(--text-muted)', fontSize: 13 }}>
           <div onClick={() => go('/deals')} style={{ cursor: 'pointer', padding: '4px 0' }}>+ Створити угоду</div>
           <div onClick={() => go('/orders')} style={{ cursor: 'pointer', padding: '4px 0' }}>→ Перейти до Замовлень</div>
@@ -115,15 +114,80 @@ function Palette({ onClose }: { onClose: () => void }) {
 
 function Login() {
   const nav = useNavigate();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('owner@demo.ua');
   const [password, setPassword] = useState('123456789');
+  const [company, setCompany] = useState(() => {
+    try { return localStorage.getItem('leleka.company') || ''; } catch { return ''; }
+  });
+  const [totp, setTotp] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [slug, setSlug] = useState('');
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function submit() {
+    setErr('');
+    setBusy(true);
+    try {
+      if (mode === 'login') {
+        await login(email, password, company, totp);
+        try { localStorage.setItem('leleka.company', company); } catch { /* ignore */ }
+      } else {
+        const { register: reg } = await import('./api');
+        await reg(email, password, ownerName || email, slug || email.split('@')[0]);
+        try { localStorage.setItem('leleka.company', slug); } catch { /* ignore */ }
+      }
+      nav('/');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  // Вхід в один клік всередині Telegram Mini App (initData перевіряє сервер)
+  useEffect(() => {
+    (async () => {
+      const w = window as unknown as { Telegram?: { WebApp?: { initData?: string } } };
+      const initData = w.Telegram?.WebApp?.initData;
+      if (!initData || token()) return;
+      try {
+        const r = await fetch('/auth/telegram', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ init_data: initData }),
+        });
+        if (r.ok) {
+          const j = await r.json();
+          localStorage.setItem('leleka-token', j.access_token);
+          if (j.refresh_token) localStorage.setItem('leleka-refresh', j.refresh_token);
+          nav('/');
+        }
+      } catch { /* немає бота/токена — звичайний вхід */ }
+    })();
+  }, [nav]);
   return (
-    <div className="glass" style={{ maxWidth: 380, margin: '12vh auto', padding: 28 }}>
-      <h2>Вхід у Leleka CRM</h2>
+    <div className="glass" style={{ maxWidth: 380, margin: '10vh auto', padding: 28 }}>
+      <h2>{mode === 'login' ? 'Вхід у Leleka CRM' : 'Нова компанія'}</h2>
+      {mode === 'register' && (
+        <>
+          <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Ваше імʼя" style={inputStyle} />
+          <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="ID компанії (латиницею)" style={inputStyle} />
+        </>
+      )}
       <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email" style={inputStyle} />
-      <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="пароль" style={inputStyle} />
-      <button style={btnStyle} onClick={() => login(email, password).then(() => nav('/')).catch((e) => setErr(String(e)))}>Увійти</button>
+      <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder={mode === 'register' ? 'пароль (мін. 10 символів)' : 'пароль'} style={inputStyle} />
+      {mode === 'login' && (
+        <>
+          <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Компанія (якщо email у кількох)" style={inputStyle} />
+          <input value={totp} onChange={(e) => setTotp(e.target.value)} placeholder="Код 2FA (якщо увімкнено)" inputMode="numeric" style={inputStyle} />
+        </>
+      )}
+      <button style={btnStyle} disabled={busy} onClick={submit}>
+        {busy ? 'Зачекайте…' : mode === 'login' ? 'Увійти' : 'Створити компанію'}
+      </button>
+      <button onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr(''); }}
+        style={{ ...btnStyle, background: 'transparent', color: 'var(--link)', marginTop: 8 }}>
+        {mode === 'login' ? 'Немає компанії? Зареєструватись' : 'Уже є акаунт? Увійти'}
+      </button>
       {err && <p style={{ color: 'var(--danger)' }}>{err}</p>}
     </div>
   );
@@ -161,7 +225,7 @@ export default function App() {
     import('./api').then(({ api }) => api('/auth/me/preferences', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ preferences: { sidebar_collapsed: v } }),
-    }));
+    }).catch(() => {}));
   }
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -172,20 +236,33 @@ export default function App() {
   });
   useEffect(() => {
     (async () => {
-      const { api } = await import('./api');
-      const [tasks, convs, orders, integ, meResp] = await Promise.all([
-        api<any[]>('/tasks?status=open&limit=200'), api<any[]>('/inbox/conversations?limit=100'),
-        api<{ items: any[] }>('/orders?status=new&limit=100'), api<any[]>('/integrations'),
-        api<any>('/auth/me'),
-      ]);
-      const now = Date.now();
-      setBadges({
-        tasks: (tasks || []).filter((x: any) => x.due_at && new Date(x.due_at).getTime() < now).length,
-        inbox: (convs || []).length,
-        orders: (orders?.items || []).length,
-        integrations: (integ || []).some((x: any) => x.status && x.status !== 'ok'),
-      });
+      try {
+        const { api } = await import('./api');
+        const safe = <T,>(p: Promise<T | null>): Promise<T | null> => p.catch(() => null);
+        const [tasks, convs, orders, integ, meResp, notifs] = await Promise.all([
+          safe(api<any[]>('/tasks?status=open&limit=200')), safe(api<any[]>('/inbox/conversations?limit=100')),
+          safe(api<{ items: any[] }>('/orders?status=new&limit=100')), safe(api<any[]>('/integrations')),
+          safe(api<any>('/auth/me')), safe(api<any[]>('/notifications')),
+        ]);
+        const now = Date.now();
+        setBadges({
+          tasks: (tasks || []).filter((x: any) => x.due_at && new Date(x.due_at).getTime() < now).length,
+          inbox: (convs || []).length,
+          orders: (orders?.items || []).length,
+          integrations: (integ || []).some((x: any) => x.status && x.status !== 'ok'),
+          notifications: (notifs || []).length,
+        });
       if (meResp) setMe(meResp);
+      try {
+        const { applyAnim } = await import('./theme');
+        const srv = (meResp as any)?.preferences?.animations;
+        if (srv === 'all' || srv === 'min' || srv === 'off') applyAnim(srv);
+        else {
+          const { loadAnim } = await import('./theme');
+          applyAnim(loadAnim());
+        }
+      } catch { /* ignore */ }
+      } catch { /* без звʼязку бейджі лишаються порожніми */ }
     })();
   }, [loc.pathname]);
   return (
@@ -198,9 +275,8 @@ export default function App() {
             overflow: 'hidden' }}>
           <Link to="/" style={{ display: 'flex', gap: 10, alignItems: 'center',
             padding: '6px 10px 14px', color: 'var(--text)', textDecoration: 'none' }}>
-            <img src="/assets/brand/logo-mark.png" alt="AI Leleka CRM" width={30} height={30}
-              style={{ borderRadius: 8, flex: 'none' }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            <img src={logoMark} alt="AI Leleka CRM" width={30} height={30}
+              style={{ borderRadius: 8, flex: 'none' }} />
             {!collapsed && <b>AI Leleka CRM</b>}
           </Link>
           {NAV.map(({ to, label, icon: Icon, badge }) => {
@@ -220,13 +296,13 @@ export default function App() {
                   collapsed
                     ? <span aria-label={`${label}: ${n || 'помилка'}`}
                         style={{ position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16,
-                          borderRadius: 8, background: 'var(--danger)', color: '#fff',
+                          borderRadius: 8, background: 'var(--danger)', color: 'var(--primary-fg)',
                           fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center',
                           justifyContent: 'center', padding: '0 4px' }}>
                         {dot ? '' : n > 9 ? '9+' : n}</span>
                     : <span style={{ marginLeft: 'auto', minWidth: 20, height: 20, borderRadius: 10,
                         background: badge === 'tasks' ? 'var(--danger)' : 'var(--primary)',
-                        color: '#fff', fontSize: 11, fontWeight: 700, display: 'inline-flex',
+                        color: 'var(--primary-fg)', fontSize: 11, fontWeight: 700, display: 'inline-flex',
                         alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>
                         {dot ? '!' : n > 99 ? '99+' : n}</span>
                 )}
@@ -262,18 +338,34 @@ export default function App() {
             </span>
             <span style={{ flex: 1 }} />
             <button onClick={() => setPalette(true)} aria-label={isMac ? 'Пошук (⌘K)' : 'Пошук (Ctrl K)'}
-              title={isMac ? '⌘K' : 'Ctrl K'} style={iconBtn}>{isMac ? '⌘K' : 'Ctrl K'}</button>
+              title={isMac ? '⌘K' : 'Ctrl K'} style={iconBtn}>
+              <Search size={18} aria-hidden />
+            </button>
             <CreateMenu />
-            <button aria-label="Сповіщення" style={iconBtn}><Bell size={18} /></button>
+            <Link to="/notifications" aria-label="Сповіщення" title="Сповіщення"
+              style={{ ...iconBtn, position: 'relative', textDecoration: 'none' }}>
+              <Bell size={18} aria-hidden />
+              {Number(badges.notifications || 0) > 0 && (
+                <span aria-hidden className="pulse-dot"
+                  style={{ position: 'absolute', top: 8, right: 8, minWidth: 16, height: 16,
+                    borderRadius: 8, background: 'var(--danger)', color: 'var(--primary-fg)',
+                    fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', padding: '0 4px' }}>
+                  {Number(badges.notifications) > 9 ? '9+' : badges.notifications}
+                </span>
+              )}
+            </Link>
             <button onClick={() => setMode(mode === 'evening' ? 'morning' : 'evening')}
               aria-label="Тема" title={`${t('theme.morning')} / ${t('theme.evening')} / ${t('theme.auto')}`} style={iconBtn}>
-              {mode === 'evening' ? '☀' : '◐'}
+              {mode === 'evening' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             {!authed && <Link to="/login">Увійти</Link>}
           </header>
-          <main style={{ maxWidth: 1440, margin: '0 auto', padding: '16px 16px 90px' }}>
+          <main key={loc.pathname} className="page-in" style={{ maxWidth: 1440, margin: '0 auto', padding: '16px 16px 90px' }}>
             {!authed && loc.pathname !== '/login' ? (
               <Navigate to="/login" replace />
+            ) : me?.must_change_password && !['/password', '/login'].includes(loc.pathname) ? (
+              <Navigate to="/password" replace />
             ) : (
             <Routes>
               <Route path="/" element={<Today />} />
@@ -288,18 +380,25 @@ export default function App() {
               <Route path="/integrations" element={<IntegrationsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/ui-kit" element={<UiKit />} />
+              <Route path="/password" element={<PasswordPage />} />
+              <Route path="/automations" element={<AutomationsPage />} />
+              <Route path="/billing" element={<BillingPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/login" element={<Login />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             )}
           </main>
         </div>
       </div>
       <nav className="mobilebar glass" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, display: 'none', zIndex: 20 }}>
-        {[['/', 'Головна', '◈'], ['/deals', t('nav.deals'), '▦'], ['/orders', t('nav.orders'), '🧾'],
-          ['/inbox', t('nav.inbox'), '✉'], ['/more', t('nav.more'), '⋯']].map(([to, label, ico]) => (
-          <NavLink key={to} to={to === '/more' ? '/settings' : to}
+        {([
+          ['/', 'Головна', Home], ['/deals', t('nav.deals'), KanbanSquare], ['/orders', t('nav.orders'), ShoppingCart],
+          ['/inbox', t('nav.inbox'), Inbox], ['/settings', t('nav.more'), Ellipsis],
+        ] as [string, string, typeof Home][]).map(([to, label, Icon]) => (
+          <NavLink key={to} to={to}
             style={{ flex: 1, textAlign: 'center', padding: '8px 0 10px', fontSize: 10, color: 'var(--text-muted)', textDecoration: 'none' }}>
-            <span style={{ fontSize: 20, display: 'block' }}>{ico}</span>{label}
+            <span style={{ display: 'flex', justifyContent: 'center' }}><Icon size={20} aria-hidden /></span>{label}
           </NavLink>
         ))}
       </nav>

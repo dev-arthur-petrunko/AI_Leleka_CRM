@@ -146,6 +146,10 @@ class StatusIn(BaseModel):
     status: str
 
 
+ORDER_STATUSES = ("new", "confirmed", "packed", "shipped", "delivered",
+                  "cancelled", "returned")
+
+
 @router.patch("/{order_id:uuid}/status")
 def set_status(order_id: UUID, data: StatusIn, user: User = Depends(_writer),
                db: Session = Depends(get_db)):
@@ -153,8 +157,15 @@ def set_status(order_id: UUID, data: StatusIn, user: User = Depends(_writer),
         Order.id == order_id, Order.tenant_id == user.tenant_id).first()
     if not order:
         raise HTTPException(404, "Not found")
+    if data.status not in ORDER_STATUSES:
+        raise HTTPException(400, f"status: {'/'.join(ORDER_STATUSES)}")
+    prev = order.status
     order.status = data.status
     order.updated_at = datetime.now(UTC)
+    if prev != data.status:
+        db.add(OrderStatusHistory(tenant_id=user.tenant_id, order_id=order.id,
+                                  from_status=prev, to_status=data.status,
+                                  source="manager"))
     db.commit()
     from app.services.orders import _fire_order_automations
     _fire_order_automations(db, user.tenant_id, order, origin="manager")
@@ -228,16 +239,14 @@ def create_return(order_id: UUID, data: ReturnIn, user: User = Depends(_writer),
     return ret
 
 
-# ---------- теги / кастом / воронки ----------
+# ---------- теги / кастом / воронки (ендпоінти нижче — на цьому ж роутері:
+# /orders/tags/..., /orders/custom-fields, /orders/pipelines) ----------
 
 class TagIn(BaseModel):
     name: str
     color: str | None = None
     entity_type: str = "client"
     entity_id: str = ""
-
-
-tags_router = APIRouter(prefix="/tags", tags=["tags"])
 
 
 @router.get("/export")

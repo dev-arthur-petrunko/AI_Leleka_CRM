@@ -33,6 +33,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Задайте SECRET_KEY у .env (openssl rand -hex 32)}
       CREDENTIALS_KEY: ${CREDENTIALS_KEY:?Задайте CREDENTIALS_KEY у .env}
       REDIS_URL: redis://redis:6379/0
+      # Тестова БД для `docker compose exec api pytest -q` (conftest створює її сам).
+      TEST_DATABASE_URL: postgresql+psycopg2://leleka:leleka@db:5432/leleka_test
     depends_on:
       db:
         condition: service_healthy

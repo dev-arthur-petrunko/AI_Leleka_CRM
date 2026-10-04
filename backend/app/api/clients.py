@@ -20,10 +20,46 @@ _writer = require_role("owner", "admin", "manager")
 router = APIRouter(prefix="/clients", tags=["clients"])
 
 
+class ClientPatch(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    segment: str | None = None  # new/regular/vip/lost
+
+
+SEGMENTS = ("new", "regular", "vip", "lost")
+
+
 class InteractionIn(BaseModel):
     channel: str = "note"  # call/sms/email/meeting/note
     body: str = ""
     deal_id: UUID | None = None
+
+
+@router.patch("/{client_id}")
+def update_client(client_id: UUID, data: ClientPatch,
+                  user: User = Depends(_writer), request: Request = None,
+                  db: Session = Depends(get_db)):
+    from app.core.phones import normalize_phone
+
+    c = db.query(Client).filter(
+        Client.id == client_id, Client.tenant_id == user.tenant_id).first()
+    if not c:
+        raise HTTPException(404, "Not found")
+    if data.segment is not None:
+        if data.segment not in SEGMENTS:
+            raise HTTPException(400, f"segment: {'/'.join(SEGMENTS)}")
+        c.segment = data.segment
+    if data.name is not None:
+        c.name = data.name
+    if data.phone is not None:
+        c.phone = normalize_phone(data.phone)
+    if data.email is not None:
+        c.email = data.email
+    _audit(db, user, str(c.id), "update", request=request)
+    db.commit()
+    db.refresh(c)
+    return c
 
 
 def _audit(db: Session, user: User, entity_id: str, action: str,

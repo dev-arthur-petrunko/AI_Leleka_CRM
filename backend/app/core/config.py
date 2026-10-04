@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
     DATABASE_URL: str = "postgresql+psycopg2://leleka:leleka@localhost:5432/leleka_crm"
     # БЕЗ дефолта: без SECRET_KEY додаток не стартує (старе значення скомпрометоване — див. README).
     SECRET_KEY: str = ""
@@ -29,9 +31,6 @@ class Settings(BaseSettings):
     # актуальну назву на docs.claude.com, вони змінюються з часом.
     ANTHROPIC_API_KEY: str = ""
     ANTHROPIC_MODEL: str = "claude-sonnet-5-5"  # актуально на 10.2026 (перевірено за доками)
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { Flame } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../api';
+import { Badge } from '../components/ui';
+import { t } from '../i18n';
 
 type Dash = {
   kpi: { new_leads_30d: number; conversion: number; avg_check: number };
@@ -59,7 +62,7 @@ function Body() {
   ];
   return (
     <div>
-      {(demo && !data) && <p style={{ color: 'var(--warn)' }}>🧪 Демо: показано не ваші дані</p>}
+      {(demo && !data) && <p><Badge tone="warn">Демо: показано не ваші дані</Badge></p>}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 14, marginBottom: 14 }}>
         {kpis.map(([l, v], i) => (
           <motion.div key={l} className="glass" style={{ padding: 18 }}
@@ -88,11 +91,11 @@ function Body() {
           </ResponsiveContainer>
         </div>
         <div className="glass" style={{ padding: 18 }}>
-          <h3>🔥 Гарячі угоди</h3>
+          <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Flame size={17} aria-hidden /> Гарячі угоди</h3>
           {d.hot_leads.length === 0 && <p style={{ color: 'var(--text-2)' }}>Порожньо — підключіть Prom, щоб зʼявились угоди.</p>}
           {d.hot_leads.slice(0, 6).map((h) => (
             <div key={h.deal_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-              <span>#{h.deal_id} · {h.reasons.stage}</span>
+              <span>#{h.deal_id} · {t('stage.' + h.reasons.stage)}</span>
               <b style={{ color: h.score >= 70 ? 'var(--ok)' : 'var(--warn)' }}>{h.score}</b>
             </div>
           ))}

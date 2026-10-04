@@ -1,0 +1,142 @@
+/* Leleka motion: єдині тривалості, криві та кейфрейми.
+   Анімувати тільки transform/opacity. Вимкнення: html[data-anim="off"|"min"]
+   і системне prefers-reduced-motion (глобально, без інлайн-хаків). */
+
+:root {
+  --dur-120: 120ms;
+  --dur-150: 150ms;
+  --dur-200: 200ms;
+  --dur-320: 320ms;
+  --dur-600: 600ms;
+  --dur-1200: 1200ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+}
+
+/* Поява сторінки: легкий зсув 150мс */
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.page-in { animation: pageIn var(--dur-150) var(--ease-out); }
+
+/* Скелетон: тепле кремове мерехтіння */
+@keyframes shimmer {
+  0% { opacity: .45; }
+  50% { opacity: .85; background-color: var(--bg-hover); }
+  100% { opacity: .45; }
+}
+.skeleton-shimmer { animation: shimmer var(--dur-1200) var(--ease-in-out) infinite; }
+
+/* Тост: виїзд знизу */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+.toast-in { animation: toastIn var(--dur-200) var(--ease-out); }
+
+/* Drawer: виїзд справа */
+@keyframes drawerIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: none; }
+}
+.drawer-in { animation: drawerIn var(--dur-200) var(--ease-out); }
+
+/* Нове замовлення: теракотоновий спалах 1.2с */
+@keyframes orderFlash {
+  0% { box-shadow: 0 0 0 0 var(--warning); background-color: var(--bg-hover); }
+  40% { box-shadow: 0 0 0 3px var(--warning); }
+  100% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
+}
+
+/* Прогрес: мʼяке зростання */
+.bar-grow { transition: width var(--dur-320) var(--ease-out); }
+
+/* Лелека: легке погойдування для порожніх станів */
+@keyframes sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+.sway { animation: sway 3s var(--ease-in-out) infinite; transform-origin: 50% 20%; }
+
+/* Машинка НП: їде по лінії статусів */
+@keyframes truckRun {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+.truck-run { animation: truckRun var(--dur-600) var(--ease-in-out) infinite; }
+
+/* Лінія кроків статусу замовлення */
+.step-line {
+  display: flex; align-items: center; gap: 0; margin-top: 4;
+}
+.step-dot {
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  background: var(--bg-hover); border: 2px solid var(--border);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+}
+.step-dot + .step-dot { margin-left: 26px; position: relative; }
+.step-dot + .step-dot::before {
+  content: ''; position: absolute; right: 100%; top: 50%;
+  width: 26px; height: 2px; transform: translateY(-50%);
+  background: var(--border);
+}
+.step-dot.done { background: var(--success); border-color: var(--success); color: var(--primary-fg); }
+.step-dot.done + .step-dot.done::before { background: var(--success); }
+.step-dot.cur { box-shadow: 0 0 0 3px var(--success-transparent, rgba(61, 220, 132, .25)); }
+
+/* Плейсхолдер місця вставки в канбані */
+@keyframes phIn {
+  from { opacity: 0; transform: scaleY(.6); }
+  to { opacity: 1; transform: none; }
+}
+.ph {
+  height: 86px; border-radius: 12px; margin-bottom: 9px;
+  border: 2px dashed var(--link); background: var(--bg-hover);
+  animation: phIn var(--dur-200) var(--ease-out);
+}
+
+/* Пульс живої точки (сповіщення) */
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: .75; }
+}
+.pulse-dot { animation: pulseDot 1.6s var(--ease-in-out) infinite; }
+
+/* Натискання кнопки */
+.press:active { transform: scale(.97); }
+.press { transition: transform var(--dur-120) var(--ease-out); }
+
+/* Поле з помилкою: один раз дрижить */
+@keyframes shake {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.shake { animation: shake var(--dur-200) var(--ease-out); }
+
+/* Перехід теми (View Transitions API, з запасним варіантом) */
+::view-transition-old(root), ::view-transition-new(root) {
+  animation-duration: var(--dur-200);
+}
+
+/* Вимкнено: нічого не рухається */
+html[data-anim="off"] *, html[data-anim="off"] *::before, html[data-anim="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+/* Мінімум: без довгих/декоративних (лишаються тости і статуси) */
+html[data-anim="min"] .sway, html[data-anim="min"] .truck-run,
+html[data-anim="min"] .skeleton-shimmer, html[data-anim="min"] .pulse-dot {
+  animation: none !important;
+}
+
+/* Система просить спокою — поводимось як «Мінімум» */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
