@@ -51,10 +51,91 @@ def test_sync_state_cursor(client, db):
     row = Integration(tenant_id=t.id, provider="prom", credentials={})
     db.add(row)
     db.commit()
-    out = sync_integration(db, row.id)  # без ключа → stub, але стан оновлено
-    assert out["ok"] is True
+    # без ключа — НЕ ok: чесний статус not_connected
+    out = sync_integration(db, row.id)
+    assert out["ok"] is False and out["error"] == "not_connected"
+    db.refresh(row)
+    assert row.status == "not_connected"
     st = get_state(db, row)
-    assert st.last_success_at is not None
+    assert st.last_success_at is None
+
+
+def _keyed(db, t, provider="prom"):
+    from app.core.security import encrypt_credentials
+    from app.models import Integration
+
+    row = Integration(tenant_id=t.id, provider=provider,
+                      credentials=encrypt_credentials({"token": "k"})["enc"])
+    db.add(row)
+    db.commit()
+    return row
+
+
+def test_sync_cursor_items_stable_ids(client, db):
+    from app.models import Order
+    from app.services.sync import get_state, sync_integration
+
+    t = make_tenant(db, slug=f"sc-{uuid.uuid4().hex[:6]}")
+    row = _keyed(db, t)
+    pages = [
+        {"ok": True, "data": {"orders": [
+            {"id": 1, "client_first_name": "А", "client_phone": "0501111111",
+             "price": 100, "date_created": "2026-09-01",
+             "products": [{"name": "Чохол", "price": 100, "quantity": 2}]},
+            {"client_first_name": "Б", "client_phone": "0502222222",
+             "price": 200, "date_created": "2026-09-02",
+             "products": [{"name": "Кава"}]},
+        ]}},
+        {"ok": True, "data": {"orders": []}},
+    ]
+    calls = []
+
+    def fake(self, limit=100, date_from=None, **kw):
+        calls.append(date_from)
+        return pages.pop(0) if pages else {"ok": True, "data": {"orders": []}}
+
+    import app.integrations.marketplace as mp
+    import app.services.sync as syncmod
+    mp.PromAdapter.pull_orders = fake
+    syncmod.PAGE_LIMIT = 2  # сторінка повна → йдемо за наступною
+    try:
+        out = sync_integration(db, row.id)
+        assert out == {"ok": True, "imported": 2}, out
+        # повторний запуск — жодних дублей (стабільний sync-хеш без id)
+        out2 = sync_integration(db, row.id)
+        assert out2 == {"ok": True, "imported": 0}, out2
+    finally:
+        del mp.PromAdapter.pull_orders
+        syncmod.PAGE_LIMIT = 100
+    # друга сторінка пішла з курсором = датою останнього
+    assert calls[1] == "2026-09-02", calls
+    st = get_state(db, row)
+    assert st.cursor == "2026-09-02"
+    # позиції збережено
+    items = db.query(Order).filter(Order.tenant_id == t.id).all()
+    assert len(items) == 2
+    o1 = next(o for o in items if o.external_id == "1")
+    from app.models import OrderItem
+    it = db.query(OrderItem).filter(OrderItem.order_id == o1.id).all()
+    assert [(x.name, x.qty, float(x.unit_price)) for x in it] == [("Чохол", 2.0, 100.0)]
+    assert db.query(Order).filter(Order.tenant_id == t.id).count() == 2
+
+
+def test_sync_failure_keeps_cursor(client, db):
+    from app.services.sync import get_state, sync_integration
+
+    t = make_tenant(db, slug=f"sf-{uuid.uuid4().hex[:6]}")
+    row = _keyed(db, t)
+    import app.integrations.marketplace as mp
+    mp.PromAdapter.pull_orders = lambda self, **kw: {"ok": False, "error": "429 rate limited"}
+    try:
+        out = sync_integration(db, row.id)
+    finally:
+        del mp.PromAdapter.pull_orders
+    assert out["ok"] is False
+    db.refresh(row)
+    assert row.status == "error" and "429" in (row.last_error or "")
+    assert get_state(db, row).last_success_at is None
 
 
 def test_lead_form_spam_rejected(client, db):

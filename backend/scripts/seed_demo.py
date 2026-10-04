@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Єдиний узгоджений демо-набір (UI 6.1): клієнти, угоди, замовлення, задачі, діалоги.
 Уся аналітика рахується з нього. Демо лише з DEMO_MODE=1 або ?demo=1 (плашка «Демо-дані»).
 
@@ -8,7 +7,7 @@
 import argparse
 import os
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, UTC
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
@@ -18,7 +17,7 @@ from app.models import (Client, Conversation, Deal, Message, Order, Task, Tenant
 SLUG = "demo"
 # UI-18: детермінованість — фіксоване зерно і фіксована «сьогодні» в демо-режимі
 random.seed(42)
-DEMO_NOW = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+DEMO_NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
 
 
 def seed(force: bool = False):
@@ -44,7 +43,7 @@ def seed(force: bool = False):
                          full_name="Власник", role="owner", email_confirmed=True)
             db.add(owner)
             db.flush()
-        now = DEMO_NOW if os.environ.get("DEMO_MODE") == "1" else datetime.now(timezone.utc)
+        now = DEMO_NOW if os.environ.get("DEMO_MODE") == "1" else datetime.now(UTC)
         clients = []
         for name, phone, seg in [("Олена", "+380501111111", "vip"),
                                  ("Тарас", "+380502222222", "regular"),

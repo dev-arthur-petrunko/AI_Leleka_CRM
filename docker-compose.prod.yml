@@ -28,6 +28,17 @@ services:
       SECRET_KEY: ${SECRET_KEY:?}
       CREDENTIALS_KEY: ${CREDENTIALS_KEY:?}
       REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379/0
+      # Фронт на вашому домені — інакше браузер заблокує запити (CORS).
+      FRONTEND_ORIGINS: https://${DOMAIN:?}
+      # Оплата тарифів (без них платний апгрейд повертає 409).
+      PLATFORM_LIQPAY_PUBLIC_KEY: ${PLATFORM_LIQPAY_PUBLIC_KEY:-}
+      PLATFORM_LIQPAY_PRIVATE_KEY: ${PLATFORM_LIQPAY_PRIVATE_KEY:-}
+      PLATFORM_MONO_TOKEN: ${PLATFORM_MONO_TOKEN:-}
+      # AI-тексти (без ключа — локальні шаблони, кабінет не падає).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Telegram-вхід у Mini App (перевірка initData на сервері).
+      TELEGRAM_BOT_TOKEN: ${BOT_TOKEN:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -46,6 +57,9 @@ services:
       SECRET_KEY: ${SECRET_KEY:?}
       CREDENTIALS_KEY: ${CREDENTIALS_KEY:?}
       REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379/0
+      FRONTEND_ORIGINS: https://${DOMAIN:?}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       - db
       - redis
@@ -53,27 +67,57 @@ services:
       - crm
   beat:
     build: ./backend
-    command: celery -A app.workers.celery_app.celery beat --loglevel=info
+    command: celery -A app.workers.celery_app.celery beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     environment:
       DATABASE_URL: postgresql+psycopg2://${DB_USER:?}:${DB_PASSWORD:?}@db:5432/${DB_NAME:?}
       SECRET_KEY: ${SECRET_KEY:?}
       CREDENTIALS_KEY: ${CREDENTIALS_KEY:?}
       REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379/0
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       - db
       - redis
     networks:
       - crm
-  # HTTPS: розкоментуйте caddy з вашим доменом (DNS має вказувати сюди)
-  # caddy:
-  #   image: caddy:2-alpine
-  #   ports: ["80:80", "443:443"]
-  #   volumes: ["./Caddyfile:/etc/caddy/Caddyfile", "caddy_data:/data"]
-  #   networks: [crm]
+  frontend:
+    # Збирає React-кабінет і лендинг (/about.html) в іменований том для Caddy.
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_dist:/srv
+    command: sh -c "npm ci && VITE_API_BASE= npm run build && cp -r dist/. /srv/ && sleep infinity"
+    networks:
+      - crm
+  bot:
+    # Telegram-бот (сповіщення, /start). Потрібен BOT_TOKEN у env;
+    # профіль, щоб `up -d` без токена не падав: запуск — `docker compose --profile bot up -d`.
+    build: ./bot
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN:-}
+      CRM_API: http://api:8000
+    depends_on:
+      - api
+    networks:
+      - crm
+    profiles: ["bot"]
+  caddy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - frontend_dist:/srv
+      - caddy_data:/data
+    networks:
+      - crm
+    depends_on:
+      - api
+      - frontend
 
 volumes:
   pgdata:
-  # caddy_data:
+  frontend_dist:
+  caddy_data:
 
 networks:
   crm:

@@ -57,6 +57,8 @@
   "prio.high": "Високий",
   "prio.normal": "Звичайний",
   "prio.low": "Низький",
+  "temp.auto": "Авто",
+  "temp.manual": "вручну",
   "feed.ok": "Працює",
   "feed.error": "Помилка",
   "feed.skipped": "Пропущено",

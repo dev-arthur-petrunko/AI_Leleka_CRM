@@ -45,6 +45,15 @@ def score_deal(deal: Deal, client: Client | None = None) -> dict:
     seg_bonus = {"vip": 10, "regular": 5}.get((client.segment if client else ""), 0)
     score = max(0, min(100, round(base + freshness + amount_bonus + seg_bonus)))
     label = "hot" if score >= 70 else ("warm" if score >= 40 else "cold")
+    # ручна температура клієнта сильніша за авто-скоринг
+    manual = ((getattr(client, "temperature", None) or "").strip().lower()
+              if client else "")
+    if manual == "hot":
+        score, label = max(score, 70), "hot"
+    elif manual == "warm":
+        score, label = min(69, max(40, score)), "warm"
+    elif manual == "cold":
+        score, label = min(score, 39), "cold"
     return {"deal_id": str(deal.id), "score": score, "label": label,
             "reasons": {"stage": deal.stage, "days_idle": days,
                         "amount": float(deal.amount or 0)}}

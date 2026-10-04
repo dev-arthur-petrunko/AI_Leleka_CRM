@@ -1,10 +1,9 @@
 """Inbox вебхуков (фаза 1: безпека).
 
-- POST /webhooks/{provider} — legacy-маршрут (slug у query). Залишено для сумісності;
-  для нових інтеграцій використовуйте підписаний /{provider}/{integration_id}.
-- POST /webhooks/{provider}/{integration_id} — тенант за integration_id, перевірка
-  секрету (заголовок X-Webhook-Secret або ?secret=) або HMAC-підпису тіла
-  (X-Signature). Ліміт тіла 1 МБ + rate-limit.
+- POST /webhooks/{provider}/{integration_id} — єдиний маршрут прийому:
+  тенант за integration_id, перевірка секрету (заголовок X-Webhook-Secret
+  або ?secret=) або HMAC-підпису тіла (X-Signature). Ліміт тіла 1 МБ + rate-limit.
+  Legacy-маршрут ?tenant=slug ВИДАЛЕНО: приймав події без секрету.
 - Дедуп: UNIQUE(tenant_id, provider, external_id); порожній external_id → sha256 тіла.
 - GET /webhooks/pending — ТІЛЬКИ owner/admin свого тенанта (воркер читає БД напряму).
 """
@@ -18,7 +17,7 @@ from app.core.deps import require_role
 from app.core.rate import limiter
 from app.core.security import decrypt_credentials, verify_signature
 from app.db.session import get_db
-from app.models import Integration, Tenant, User, WebhookEvent
+from app.models import Integration, User, WebhookEvent
 from datetime import UTC
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -45,25 +44,6 @@ def _store(db: Session, tenant_id, provider: str, external_id: str, payload: dic
     db.add(ev)
     db.commit()
     return {"ok": True, "id": str(ev.id)}
-
-
-@router.post("/{provider}")
-async def ingest(provider: str, request: Request, db: Session = Depends(get_db)):
-    raw = await request.body()
-    if len(raw) > MAX_BODY_BYTES:
-        raise HTTPException(413, "Тіло завелике")
-    try:
-        import json
-        body = json.loads(raw) if raw else {}
-    except Exception:
-        body = {}
-    if not isinstance(body, dict):
-        body = {"raw": str(body)[:2000]}
-    slug = request.query_params.get("tenant")
-    tenant = db.query(Tenant).filter(Tenant.slug == slug).first() if slug else None
-    if not tenant:
-        raise HTTPException(404, "Tenant not found (використовуйте підписаний маршрут)")
-    return _store(db, tenant.id, provider, _external_id(body, raw), body)
 
 
 @router.post("/{provider}/{integration_id}")

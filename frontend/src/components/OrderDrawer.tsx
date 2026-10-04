@@ -27,9 +27,8 @@ export default function OrderDrawer({ orderId, onClose }: { orderId: string; onC
   });
 
   async function setOrderStatus() {
-    if (!status) return;
-    setMsg('');
-    try {
+    if (!status || status === data?.order?.status) return;
+    setMsg('');    try {
       await api(`/orders/${orderId}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),

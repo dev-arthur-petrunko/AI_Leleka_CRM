@@ -25,9 +25,11 @@ class ClientPatch(BaseModel):
     phone: str | None = None
     email: str | None = None
     segment: str | None = None  # new/regular/vip/lost
+    temperature: str | None = None  # hot/warm/cold/""/null=авто
 
 
 SEGMENTS = ("new", "regular", "vip", "lost")
+TEMPERATURES = ("hot", "warm", "cold")
 
 
 class InteractionIn(BaseModel):
@@ -56,6 +58,11 @@ def update_client(client_id: UUID, data: ClientPatch,
         c.phone = normalize_phone(data.phone)
     if data.email is not None:
         c.email = data.email
+    if data.temperature is not None:
+        temp = (data.temperature or "").strip().lower() or None
+        if temp is not None and temp not in TEMPERATURES:
+            raise HTTPException(400, f"temperature: {'/'.join(TEMPERATURES)} або пусто (авто)")
+        c.temperature = temp
     _audit(db, user, str(c.id), "update", request=request)
     db.commit()
     db.refresh(c)

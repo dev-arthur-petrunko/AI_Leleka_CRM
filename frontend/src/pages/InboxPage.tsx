@@ -15,6 +15,7 @@ export default function InboxPage() {
   const convs = useQuery({
     queryKey: ['convs'], queryFn: () => api<Conv[]>('/inbox/conversations?limit=30'),
   });
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<{ id: string }>('/auth/me') });
   const thread = useQuery({
     queryKey: ['thread', cur], enabled: !!cur,
     queryFn: () => api<{ conversation: Conv; messages: Msg[] }>(`/inbox/conversations/${cur}`),
@@ -58,6 +59,19 @@ export default function InboxPage() {
               {t('conv.' + thread.data.conversation.status)}
             </Badge>
             <span style={{ flex: 1 }} />
+            <Button variant="ghost" onClick={async () => {
+              if (!me.data?.id) return;
+              try {
+                await api(`/inbox/conversations/${cur}`, {
+                  method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ assignee_id: me.data.id }),
+                });
+                qc.invalidateQueries({ queryKey: ['convs'] });
+                thread.refetch();
+              } catch { /* ignore */ }
+            }}>
+              Взяти собі
+            </Button>
             <Button variant="ghost" onClick={async () => {
               const conv = thread.data?.conversation;
               if (!conv) return;

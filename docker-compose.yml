@@ -55,7 +55,7 @@ services:
       - redis
   beat:
     build: ./backend
-    command: celery -A app.workers.celery_app.celery beat --loglevel=info
+    command: celery -A app.workers.celery_app.celery beat --loglevel=info --schedule=/tmp/celerybeat-schedule
     volumes:
       - ./backend:/code
     environment:

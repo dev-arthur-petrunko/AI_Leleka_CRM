@@ -74,6 +74,7 @@ CREATE TABLE clients (
                 CHECK (source IN ('manual','form','prom','rozetka','import','other')),
   segment       TEXT NOT NULL DEFAULT 'new'
                 CHECK (segment IN ('new','regular','vip','lost')),
+  temperature   VARCHAR(10),
   notes         TEXT NOT NULL DEFAULT '',
   gdpr_consent  BOOLEAN NOT NULL DEFAULT FALSE,      -- согласие на обработку ПД
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),

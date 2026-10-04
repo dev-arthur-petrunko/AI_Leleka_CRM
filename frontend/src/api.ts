@@ -1,5 +1,7 @@
 const BASE = import.meta.env.VITE_API_BASE || '';
 
+export const API_BASE = BASE;
+
 export function token(): string | null {
   return localStorage.getItem('leleka-token');
 }

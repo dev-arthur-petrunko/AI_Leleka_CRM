@@ -62,9 +62,12 @@ class PromAdapter(BaseAdapter):
 class RozetkaAdapter(BaseAdapter):
     provider = "rozetka"
 
-    def pull_orders(self, limit: int = 50) -> dict:
+    def pull_orders(self, limit: int = 50, date_from: str | None = None) -> dict:
         if not self.configured:
             return self.stub("pull_orders", {"limit": limit})
+        # Обмеження API: date_from не задокументовано для пошуку Rozetka,
+        # тому приймаємо (щоб sync був одноманітним), але не надсилаємо.
+        # Пагінації по offset у відповіді немає — sync зупиниться на seen-наборі.
 
         def _do():
             import requests
@@ -94,6 +97,27 @@ def _product_summary(items: list) -> str | None:
     return f"{names[0]} та ще {len(names) - 1} поз."
 
 
+def _items(items: list, name_keys=("name", "title")) -> list:
+    """Позиції для upsert_order: [{name, qty, unit_price}]. Цін у фідах може не бути."""
+    out = []
+    for i in (items or []):
+        if not isinstance(i, dict):
+            continue
+        name = next((str(i.get(k) or "").strip() for k in name_keys if i.get(k)), "")
+        if not name:
+            continue
+        try:
+            price = float(i.get("price", 0) or 0)
+        except (TypeError, ValueError):
+            price = 0
+        try:
+            qty = float(i.get("quantity", i.get("qty", 1)) or 1)
+        except (TypeError, ValueError):
+            qty = 1
+        out.append({"name": name, "qty": qty, "unit_price": price})
+    return out
+
+
 def normalize_order(provider: str, raw: dict) -> dict:
     """Єдиний формат замовлення -> client + deal."""
     if provider == "prom":
@@ -101,10 +125,12 @@ def normalize_order(provider: str, raw: dict) -> dict:
                 "name": raw.get("client_first_name", "Клієнт Prom"),
                 "phone": raw.get("client_phone", ""),
                 "amount": float(raw.get("price", 0) or 0),
+                "items": _items(raw.get("products", [])),
                 "product_summary": _product_summary(raw.get("products", []))}
     customer = raw.get("customer") if isinstance(raw.get("customer"), dict) else {}
     return {"external_id": str(raw.get("id", "")),
             "name": customer.get("name", "Клієнт Rozetka"),
             "phone": customer.get("phone", ""),
             "amount": float(raw.get("amount", 0) or 0),
+            "items": _items(raw.get("items", [])),
             "product_summary": _product_summary(raw.get("items", []))}

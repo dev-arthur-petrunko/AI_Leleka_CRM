@@ -16,3 +16,5 @@ frontend/dist/
 frontend/node_modules/
 bot/__pycache__/
 celerybeat-schedule
+frontend/snapshots/
+vite.log

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Banknote, ChevronLeft, ChevronRight, Package, Store, Truck } from 'lucide-react';
 import { api } from '../api';
-import { Badge, Button, Card, EmptyState, ErrorState, Select, Skeleton } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, Input, Select, Skeleton } from '../components/ui';
 import OrderDrawer from '../components/OrderDrawer';
 import { t } from '../i18n';
 
@@ -27,6 +27,8 @@ function payTone(s: string): 'info' | 'ok' | 'warn' | 'bad' {
 export default function Orders() {
   const [status, setStatus] = useState('');
   const [source, setSource] = useState('');
+  const [pay, setPay] = useState('');
+  const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const limit = 20;
   const [openId, setOpenId] = useState<string | null>(null);
@@ -34,10 +36,11 @@ export default function Orders() {
   const known = useRef<Set<string>>(new Set());
   const [fresh, setFresh] = useState(0);
   const { data, error, isLoading, refetch } = useQuery({
-    queryKey: ['orders', status, source, page],
+    queryKey: ['orders', status, source, pay, q, page],
     queryFn: () => api<{ total: number; items: Order[] }>(
       `/orders?limit=${limit}&offset=${page * limit}` +
-      (status ? `&status=${status}` : '') + (source ? `&source=${source}` : '')),
+      (status ? `&status=${status}` : '') + (source ? `&source=${source}` : '') +
+      (pay ? `&payment_status=${pay}` : '') + (q ? `&q=${encodeURIComponent(q)}` : '')),
     refetchInterval: 30000, // нові замовлення з синхронізації підтягуються самі
   });
   useEffect(() => {
@@ -85,6 +88,20 @@ export default function Orders() {
             {['prom', 'rozetka', 'site', 'manual'].map((s) => (
               <option key={s} value={s}>{t('source.' + s)}</option>))}
           </Select>
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+          Оплата
+          <Select value={pay} onChange={(e) => { setPay(e.target.value); setPage(0); }} aria-label="Оплата"
+            style={{ minWidth: 140 }}>
+            <option value="">Будь-яка</option>
+            {['unpaid', 'paid', 'partial', 'refunded'].map((s) => (
+              <option key={s} value={s}>{t('pay.' + s)}</option>))}
+          </Select>
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+          Пошук
+          <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }}
+            placeholder="Номер, ТТН…" aria-label="Пошук замовлень" style={{ minWidth: 150 }} />
         </label>
       </Card>
       {data.items.length === 0 && (

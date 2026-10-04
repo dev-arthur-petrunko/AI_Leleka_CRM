@@ -44,6 +44,56 @@ def create_deal(data: DealIn, user=Depends(_writer),
     return d
 
 
+class DealPatch(BaseModel):
+    title: str | None = None
+    amount: float | None = None
+    client_id: UUID | None = None
+    manager_id: UUID | None = None
+    probability: int | None = None
+
+
+@router.patch("/{deal_id}")
+def update_deal(deal_id: UUID, data: DealPatch, user=Depends(_writer),
+                db: Session = Depends(get_db)):
+    from app.models import Client, User
+
+    d = db.query(Deal).filter(
+        Deal.id == deal_id, Deal.tenant_id == user.tenant_id).first()
+    if not d:
+        raise HTTPException(404, "Not found")
+    if data.title is not None:
+        if not data.title.strip():
+            raise HTTPException(400, "title порожній")
+        d.title = data.title.strip()
+    if data.amount is not None:
+        if data.amount < 0:
+            raise HTTPException(400, "amount >= 0")
+        d.amount = data.amount
+    if data.client_id is not None:
+        c = db.query(Client).filter(
+            Client.id == data.client_id,
+            Client.tenant_id == user.tenant_id).first()
+        if not c:
+            raise HTTPException(400, "Клієнта не знайдено у вашій компанії")
+        d.client_id = data.client_id
+    if data.manager_id is not None:
+        m = db.query(User).filter(
+            User.id == data.manager_id,
+            User.tenant_id == user.tenant_id).first()
+        if not m:
+            raise HTTPException(400, "Менеджера не знайдено у вашій компанії")
+        d.manager_id = data.manager_id
+    if data.probability is not None:
+        if not 0 <= data.probability <= 100:
+            raise HTTPException(400, "probability 0..100")
+        d.probability = data.probability
+    from datetime import datetime
+    d.last_activity_at = datetime.now(UTC)
+    db.commit()
+    db.refresh(d)
+    return d
+
+
 @router.get("/export")
 def export_csv(tenant_id: UUID = Depends(get_current_tenant),
                db: Session = Depends(get_db)):

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, MinusCircle, RefreshCw, XCircle } from 'lucide-react';
 import { api } from '../api';
-import { Badge, Button, Card, EmptyState, ErrorState, Skeleton } from '../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, Input, Select, Skeleton } from '../components/ui';
 import { t } from '../i18n';
 
 type Src = { id: string; name: string; last_status?: string; last_run_at?: string; interval_minutes: number };
@@ -32,12 +32,39 @@ function statusLabel(s?: string): string {
 export default function FeedHub() {
   const qc = useQueryClient();
   const [msg, setMsg] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+  const [sName, setSName] = useState('');
+  const [sUrl, setSUrl] = useState('');
+  const [sInterval, setSInterval] = useState('60');
   const sources = useQuery({ queryKey: ['feeds'], queryFn: () => api<Src[]>('/feedhub/sources') });
   const runs = useQuery({ queryKey: ['feed-runs'], queryFn: () => api<Run[]>('/feedhub/runs?limit=10') });
   const products = useQuery({
     queryKey: ['feed-products'],
     queryFn: () => api<{ items: any[] }>('/feedhub/products?limit=50'),
   });
+  async function addSource() {
+    setMsg('');
+    if (!sName.trim() || !sUrl.trim()) return;
+    try {
+      await api('/feedhub/sources', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: sName.trim(), url: sUrl.trim(),
+          interval_minutes: Number(sInterval) || 60 }),
+      });
+      setSName(''); setSUrl(''); setShowAdd(false);
+      qc.invalidateQueries({ queryKey: ['feeds'] });
+    } catch {
+      setMsg('Не вдалося додати (тільки owner/admin, інтервал 15/60/1440).');
+    }
+  }
+  async function delSource(id: string) {
+    try {
+      await api(`/feedhub/sources/${id}`, { method: 'DELETE' });
+      qc.invalidateQueries({ queryKey: ['feeds'] });
+    } catch {
+      setMsg('Не вдалося видалити.');
+    }
+  }
   async function refresh(id: string) {
     setMsg('Оновлення…');
     try {
@@ -66,7 +93,31 @@ export default function FeedHub() {
   return (
     <div>
       <Card style={{ marginBottom: 14 }}>
-        <h3>Джерела фідів</h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <h3 style={{ margin: 0, flex: 1 }}>Джерела фідів</h3>
+          <Button variant="ghost" onClick={() => setShowAdd((v) => !v)}>+ Джерело</Button>
+        </div>
+        {showAdd && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'end',
+            marginTop: 8, padding: 12, border: '1px dashed var(--border)', borderRadius: 10 }}>
+            <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Назва
+              <Input value={sName} onChange={(e) => setSName(e.target.value)}
+                placeholder="Прайс постачальника" aria-label="Назва джерела" />
+            </label>
+            <label style={{ fontSize: 12, color: 'var(--text-muted)', flex: '1 1 220px' }}>URL (YML/CSV)
+              <Input value={sUrl} onChange={(e) => setSUrl(e.target.value)}
+                placeholder="https://…" aria-label="URL фіда" />
+            </label>
+            <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Інтервал, хв
+              <Select value={sInterval} onChange={(e) => setSInterval(e.target.value)} aria-label="Інтервал">
+                <option value="15">15</option>
+                <option value="60">60</option>
+                <option value="1440">1440</option>
+              </Select>
+            </label>
+            <Button onClick={addSource} disabled={!sName.trim() || !sUrl.trim()}>Додати</Button>
+          </div>
+        )}
         {sources.data.length === 0 && (
           <EmptyState title="Джерел поки немає"
             hint="Додайте перше джерело через API (POST /feedhub/sources)." />
@@ -85,6 +136,9 @@ export default function FeedHub() {
               <Button variant="ghost" onClick={() => refresh(s.id)}>
                 <RefreshCw size={14} /> Оновити
               </Button>
+              <button onClick={() => delSource(s.id)} aria-label={`Видалити ${s.name}`}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                  cursor: 'pointer', padding: 6 }}>×</button>
             </span>
           </div>
         ))}

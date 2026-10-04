@@ -18,6 +18,18 @@ TEST_DB_URL = os.environ.get(
     "postgresql+psycopg2://leleka:leleka@localhost:5432/leleka_test",
 )
 
+# ЗАХИСТ ВІД ЗАПИСУ В DEV-БАЗУ: тести працюють ТІЛЬКИ з базою *_test,
+# а DATABASE_URL примусово рівняємо на неї (воркер читає SessionLocal).
+from sqlalchemy.engine import make_url as _make_url
+
+_test_db_name = _make_url(TEST_DB_URL).database or ""
+if not _test_db_name.endswith("_test"):
+    raise RuntimeError(
+        f"TEST_DATABASE_URL має вказувати на базу *_test, отримано: {_test_db_name!r}. "
+        "Відмовляємось стартувати, щоб не зачепити робочі дані."
+    )
+os.environ["DATABASE_URL"] = TEST_DB_URL
+
 
 def _ensure_db():
     from sqlalchemy.engine import make_url

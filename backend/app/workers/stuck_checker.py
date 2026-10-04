@@ -12,14 +12,14 @@ from app.models import Deal
 from app.services.automation import run_automations
 
 
-def check_stuck(days: int = 3) -> dict:
+def check_stuck(days: int = 3, limit: int = 200) -> dict:
     db = SessionLocal()
     try:
         cutoff = datetime.now(UTC) - timedelta(days=days)
         stuck = db.query(Deal).filter(
             Deal.stage.notin_(["won", "lost"]),
             Deal.last_activity_at < cutoff,
-        ).all()
+        ).order_by(Deal.last_activity_at).limit(limit).all()
         fired = 0
         for deal in stuck:
             run_automations(db, deal.tenant_id, "deal_stuck", {
@@ -31,7 +31,8 @@ def check_stuck(days: int = 3) -> dict:
                 "stuck_days": days,
             })
             fired += 1
-        return {"stuck_found": len(stuck), "rules_fired_for": fired}
+        return {"stuck_found": len(stuck), "rules_fired_for": fired,
+                "truncated": len(stuck) >= limit}
     finally:
         db.close()
 

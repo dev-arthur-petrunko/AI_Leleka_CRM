@@ -1,0 +1,19 @@
+# Прод-вхід: HTTPS сюди, далі — статика фронта або API.
+# Домен береться з ${DOMAIN} (DNS має вказувати на сервер).
+{$DOMAIN} {
+	encode gzip
+
+	# API і службові шляхи — у бекенд (у фронта префікса /api нема,
+	# тому перелічуємо його кореневі маршрути явно)
+	@api path /auth* /clients* /deals* /orders* /tasks* /webhooks* /automations* /analytics* /billing* /integrations* /inbox* /forms* /api* /search /today /views* /health /docs* /openapi.json
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	# Решта — зібраний фронт (кабінет + /about.html), SPA через /index.html
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

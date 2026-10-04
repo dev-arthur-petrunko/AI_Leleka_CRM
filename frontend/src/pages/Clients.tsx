@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Phone, Search, User } from 'lucide-react';
 import { api } from '../api';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Select, Skeleton } from '../components/ui';
 import ClientDrawer from '../components/ClientDrawer';
 import { t } from '../i18n';
 
-type Client = { id: string; name: string; phone?: string; segment: string };
+type Client = { id: string; name: string; phone?: string; segment: string; temperature?: string | null };
 
 function fmtPhone(p?: string): string {
   if (!p) return '';
@@ -27,9 +27,32 @@ function initial(name: string): string {
 }
 
 export default function Clients() {
+  const qc = useQueryClient();
   const [q, setQ] = useState('');
   const [seg, setSeg] = useState('');
   const [open, setOpen] = useState<Client | null>(null);
+  const [impMsg, setImpMsg] = useState('');
+  async function importCsv(file: File | undefined) {
+    if (!file) return;
+    setImpMsg('Імпорт…');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('mapping', '{}');
+      const t = localStorage.getItem('leleka-token');
+      const base = import.meta.env.VITE_API_BASE || '';
+      const r = await fetch(`${base}/clients/import-csv`, {
+        method: 'POST', headers: t ? { Authorization: `Bearer ${t}` } : {},
+        body: fd,
+      });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json();
+      setImpMsg(`Імпортовано: ${j.imported ?? j.created ?? '?'}`);
+      qc.invalidateQueries({ queryKey: ['clients'] });
+    } catch {
+      setImpMsg('Не вдалося імпортувати (CSV з колонками name,phone,email).');
+    }
+  }
   const { data, error, isLoading, refetch } = useQuery({
     queryKey: ['clients', q, seg],
     queryFn: () => api<{ total: number; items: Client[] }>(
@@ -53,7 +76,13 @@ export default function Clients() {
         <span className="num" style={{ color: 'var(--text-muted)', fontSize: 13, marginLeft: 'auto' }}>
           {data.total} клієнтів
         </span>
+        <label style={{ fontSize: 12, color: 'var(--link)', cursor: 'pointer' }}>
+          Імпорт CSV
+          <input type="file" accept=".csv" hidden
+            onChange={(e) => { importCsv(e.target.files?.[0]); e.target.value = ''; }} />
+        </label>
       </Card>
+      {impMsg && <Card style={{ padding: 10 }}>{impMsg}</Card>}
       {data.items.length === 0 && (
         <Card><EmptyState title="Клієнтів не знайдено" hint="Змініть пошук або додайте першого клієнта."
           action={<Button onClick={() => { setQ(''); setSeg(''); }}>Скинути фільтри</Button>} /></Card>
@@ -102,8 +131,13 @@ export default function Clients() {
                     <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>Без телефону</span>
                   )}
                 </div>
-                <div style={{ marginTop: 10 }}>
+                <div style={{ marginTop: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <Badge tone={segmentTone(c.segment)}>{t('segment.' + c.segment)}</Badge>
+                  {c.temperature && (
+                    <Badge tone={c.temperature === 'hot' ? 'bad' : c.temperature === 'warm' ? 'warn' : 'info'}>
+                      {t('score.' + c.temperature)}
+                    </Badge>
+                  )}
                 </div>
               </div>
             </Card>

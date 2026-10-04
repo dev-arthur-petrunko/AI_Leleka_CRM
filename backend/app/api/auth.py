@@ -49,6 +49,50 @@ class ResetConfirmIn(BaseModel):
     new_password: str
 
 
+CONFIRM_MAX_AGE = 24 * 3600
+
+
+def _confirm_token(email: str) -> str:
+    """Підпис без БД: email.ts.hmac(SECRET_KEY). Лист нікому не розкриває зайвого."""
+    import base64
+    import hashlib
+    import hmac as _hmac
+    import time
+
+    from app.core.config import settings
+
+    ts = str(int(time.time()))
+    sig = _hmac.new(settings.SECRET_KEY.encode(),
+                    f"{email}.{ts}".encode(), hashlib.sha256).hexdigest()
+    raw = f"{email}.{ts}.{sig}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+
+def _verify_confirm_token(token: str) -> str | None:
+    import base64
+    import hashlib
+    import hmac as _hmac
+    import time
+
+    from app.core.config import settings
+
+    try:
+        email, ts, sig = base64.urlsafe_b64decode(token.encode()).decode().rsplit(".", 2)
+        expect = _hmac.new(settings.SECRET_KEY.encode(),
+                           f"{email}.{ts}".encode(), hashlib.sha256).hexdigest()
+        if not _hmac.compare_digest(expect, sig):
+            return None
+        if int(time.time()) - int(ts) > CONFIRM_MAX_AGE:
+            return None
+        return email
+    except Exception:
+        return None
+
+
+class ConfirmIn(BaseModel):
+    token: str
+
+
 class TotpSetupOut(BaseModel):
     otpauth_uri: str
 
@@ -104,7 +148,49 @@ def register(request: Request, data: RegisterTenantIn,
                 email_confirmed=False)
     db.add(user)
     db.commit()
-    return _tokens(user)
+    _send_confirm_email(data.email, _confirm_token(data.email), db)
+    out = _tokens(user)
+    return out
+
+
+def _send_confirm_email(email: str, token: str, db: Session):
+    """Посилання-підтвердження. Без SMTP — у лог, вхід НЕ блокуємо (мʼяке)."""
+    import logging as _logging
+
+    log = _logging.getLogger("leleka.auth")
+    from app.models import Integration
+
+    row = db.query(Integration).filter(
+        Integration.provider == "email", Integration.is_active.is_(True)).first()
+    if row:
+        try:
+            from app.core.security import decrypt_credentials
+            from app.integrations.email import SmtpEmailAdapter
+
+            creds = decrypt_credentials(row.credentials)
+            SmtpEmailAdapter(creds, row.settings).send_email(
+                email, "Підтвердження пошти Leleka",
+                f"Підтвердіть пошту токеном (24 год): {token}")
+            return
+        except Exception as e:
+            log.warning("confirm email failed: %s", e)
+    log.warning("CONFIRM-TOKEN for %s: [приховано] (демо: нема SMTP)")
+
+
+@router.post("/confirm-email")
+@limiter.limit("10/minute")
+def confirm_email(request: Request, data: ConfirmIn,
+                  db: Session = Depends(get_db)):
+    email = _verify_confirm_token(data.token)
+    if not email:
+        raise HTTPException(400, "Токен невалідний або прострочений")
+    users = db.query(User).filter(User.email == email).all()
+    if not users:
+        raise HTTPException(404, "Користувача не знайдено")
+    for u in users:
+        u.email_confirmed = True
+    db.commit()
+    return {"ok": True, "email": email}
 
 
 @router.post("/login", response_model=TokenOut)
@@ -366,6 +452,7 @@ def me(user: User = Depends(get_current_user)):
         "full_name": user.full_name,
         "preferences": user.preferences or {},
         "must_change_password": user.must_change_password,
+        "email_confirmed": user.email_confirmed,
     }
 
 

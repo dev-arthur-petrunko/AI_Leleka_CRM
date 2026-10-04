@@ -86,6 +86,16 @@
 .step-dot.done + .step-dot.done::before { background: var(--success); }
 .step-dot.cur { box-shadow: 0 0 0 3px var(--success-transparent, rgba(61, 220, 132, .25)); }
 
+/* Канбан-картка: каскадна поява + підйом при наведенні */
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.card-in { animation: cardIn var(--dur-200) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 30ms); }
+.lift { transition: transform var(--dur-150) var(--ease-out), box-shadow var(--dur-150) var(--ease-out); }
+.lift:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 0, 0, .18); }
+
 /* Плейсхолдер місця вставки в канбані */
 @keyframes phIn {
   from { opacity: 0; transform: scaleY(.6); }

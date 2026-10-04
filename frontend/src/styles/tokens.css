@@ -17,6 +17,8 @@
 /* Слабкі пристрої: .lite на <html> вимикає розмиття */
 .lite .glass.blur { backdrop-filter: none; -webkit-backdrop-filter: none; }
 
+*, *::before, *::after { box-sizing: border-box; }
+
 body {
   margin: 0;
   background: var(--bg);

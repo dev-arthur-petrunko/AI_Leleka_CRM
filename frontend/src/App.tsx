@@ -123,6 +123,7 @@ function Login() {
   const [totp, setTotp] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [slug, setSlug] = useState('');
+  const [confirmTok, setConfirmTok] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   async function submit() {
@@ -188,6 +189,36 @@ function Login() {
         style={{ ...btnStyle, background: 'transparent', color: 'var(--link)', marginTop: 8 }}>
         {mode === 'login' ? 'Немає компанії? Зареєструватись' : 'Уже є акаунт? Увійти'}
       </button>
+      {mode === 'register' && (
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          Після реєстрації підтвердіть пошту токеном з листа (24 год).
+        </p>
+      )}
+      <details style={{ marginTop: 8, fontSize: 13 }}>
+        <summary style={{ cursor: 'pointer', color: 'var(--link)' }}>У мене є токен підтвердження пошти</summary>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <input value={confirmTok} onChange={(e) => setConfirmTok(e.target.value)}
+            placeholder="Токен з листа" style={inputStyle} />
+          <button style={{ ...btnStyle, width: 'auto' }} disabled={busy || !confirmTok.trim()}
+            onClick={async () => {
+              setErr('');
+              try {
+                const { API_BASE } = await import('./api');
+                const r = await fetch(`${API_BASE}/auth/confirm-email`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ token: confirmTok.trim() }),
+                });
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                setConfirmTok('');
+                setErr('');
+              } catch {
+                setErr('Токен невалідний або прострочений.');
+              }
+            }}>
+            OK
+          </button>
+        </div>
+      </details>
       {err && <p style={{ color: 'var(--danger)' }}>{err}</p>}
     </div>
   );
@@ -233,7 +264,7 @@ export default function App() {
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  });
+  }, [collapsed]);
   useEffect(() => {
     (async () => {
       try {

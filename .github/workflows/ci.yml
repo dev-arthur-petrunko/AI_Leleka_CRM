@@ -33,10 +33,68 @@ jobs:
         with: { python-version: '3.12' }
       - run: pip install -r backend/requirements.txt
       - run: pip install ruff pip-audit
-      - run: gitleaks detect --source . --no-git || true
-      - run: ruff check backend || true
-      - run: pip-audit -r backend/requirements.txt || true
+      - name: Install gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.2/gitleaks_8.24.2_linux_x64.tar.gz \
+            | tar -xz -C /tmp gitleaks && sudo mv /tmp/gitleaks /usr/local/bin/
+      # Блокуючі перевірки: без || true
+      - run: gitleaks detect --source . --no-git --exit-code 1
+      - run: ruff check backend
+      - run: pip-audit -r backend/requirements.txt
       - run: python -m compileall backend/app
       - run: cd backend && alembic upgrade head
       - run: cd backend && pytest -q
       - run: cd frontend && node ../frontend/scripts/check-contrast.mjs 2>/dev/null || node scripts/check-contrast.mjs
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+      - run: cd frontend && npm ci
+      - run: cd frontend && npx tsc --noEmit
+      - run: cd frontend && npm run build
+
+  snapshots:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: leleka
+          POSTGRES_PASSWORD: leleka
+          POSTGRES_DB: leleka_crm
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    env:
+      DATABASE_URL: postgresql+psycopg2://leleka:leleka@localhost:5432/leleka_crm
+      TEST_DATABASE_URL: postgresql+psycopg2://leleka:leleka@localhost:5432/leleka_crm
+      REDIS_URL: redis://localhost:6379/0
+      SECRET_KEY: ci-secret-key-min-32-chars-long-0123456789
+      CREDENTIALS_KEY: ci-credentials-key
+      VITE_API_BASE: http://localhost:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+      - run: pip install -r backend/requirements.txt && pip install playwright requests
+      - run: python -m playwright install chromium --with-deps
+      - run: cd backend && alembic upgrade head
+      - run: cd backend && (uvicorn app.main:app --port 8000 &>/tmp/api.log & echo $! > /tmp/api.pid)
+      - run: cd frontend && npm ci && npm run build
+      - run: cd frontend && python scripts/snapshots.py --serve 5174 --api http://localhost:8000
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: snapshots, path: frontend/snapshots/ }
+      - if: always()
+        run: kill $(cat /tmp/api.pid) || true

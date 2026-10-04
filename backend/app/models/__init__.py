@@ -85,6 +85,8 @@ class Client(Base):
     viber_id: Mapped[str | None] = mapped_column(Text)          # так само — Viber Business не дозволяє писати першим без цього
     source: Mapped[str] = mapped_column(String(20), default="manual")
     segment: Mapped[str] = mapped_column(String(20), default="new")
+    temperature: Mapped[str | None] = mapped_column(
+        String(10))  # hot/warm/cold вручну; null = авто-скоринг
     notes: Mapped[str] = mapped_column(Text, default="")
     custom: Mapped[dict] = mapped_column(JSONB, default=dict)  # кастомні поля (фаза 2.5)
     consents: Mapped[dict] = mapped_column(JSONB, default=dict)  # {channel: {granted_at, source}}

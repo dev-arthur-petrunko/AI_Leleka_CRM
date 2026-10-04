@@ -5,13 +5,23 @@ import { api } from '../api';
 import { Badge, Button, Card, ErrorState, Input, Select, Skeleton } from './ui';
 import { t } from '../i18n';
 
-type Client = { id: string; name: string; phone?: string; segment?: string };
+type Client = { id: string; name: string; phone?: string; segment?: string; temperature?: string | null };
 
 function segmentTone(s?: string): 'info' | 'ok' | 'warn' | 'bad' {
   if (s === 'vip') return 'ok';
   if (s === 'regular') return 'info';
   if (s === 'lost') return 'bad';
   return 'warn';
+}
+
+function TempBadge({ temp }: { temp?: string | null }) {
+  if (!temp) return null;
+  const tone = temp === 'hot' ? 'bad' : temp === 'warm' ? 'warn' : 'info';
+  return (
+    <Badge tone={tone as 'bad'}>
+      {t('score.' + temp)} · {t('temp.manual')}
+    </Badge>
+  );
 }
 
 export default function ClientDrawer({ client, onClose }: { client: Client; onClose: () => void }) {
@@ -21,7 +31,11 @@ export default function ClientDrawer({ client, onClose }: { client: Client; onCl
   const [preview, setPreview] = useState<any>(null);
   const [msg, setMsg] = useState('');
   const [confirmDel, setConfirmDel] = useState(false);
+  const [confirmErase, setConfirmErase] = useState(false);
   const [seg, setSeg] = useState(client.segment || 'new');
+  const [temp, setTemp] = useState(client.temperature || '');
+  const me = useQuery({ queryKey: ['me'], queryFn: () => api<{ role: string }>('/auth/me') });
+  const canErase = me.data?.role === 'owner' || me.data?.role === 'admin';
   const hist = useQuery({
     queryKey: ['interactions', client.id],
     queryFn: () => api<any[]>(`/clients/${client.id}/interactions?limit=50`),
@@ -67,7 +81,7 @@ export default function ClientDrawer({ client, onClose }: { client: Client; onCl
           </button>
         </div>
         {client.phone && <div className="num" style={{ color: 'var(--link)', marginTop: 4 }}>{client.phone}</div>}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
           <Badge tone={segmentTone(seg)}>{t('segment.' + seg)}</Badge>
           <Select value={seg} aria-label="Сегмент клієнта" onChange={async (e) => {
             const next = e.target.value;
@@ -86,6 +100,26 @@ export default function ClientDrawer({ client, onClose }: { client: Client; onCl
           }}>
             {['new', 'regular', 'vip', 'lost'].map((s) => (
               <option key={s} value={s}>{t('segment.' + s)}</option>))}
+          </Select>
+          <TempBadge temp={temp} />
+          <Select value={temp} aria-label="Температура клієнта" onChange={async (e) => {
+            const next = e.target.value;
+            const prev = temp;
+            setTemp(next);
+            try {
+              await api(`/clients/${client.id}`, {
+                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ temperature: next }),
+              });
+              qc.invalidateQueries({ queryKey: ['clients'] });
+            } catch {
+              setTemp(prev);
+              setMsg('Не вдалося змінити температуру.');
+            }
+          }}>
+            <option value="">{t('temp.auto')}</option>
+            {(['hot', 'warm', 'cold'] as const).map((s) => (
+              <option key={s} value={s}>{t('score.' + s)}</option>))}
           </Select>
         </div>
         <div style={{ marginTop: 8 }}>
@@ -108,6 +142,30 @@ export default function ClientDrawer({ client, onClose }: { client: Client; onCl
             </span>
           )}
         </div>
+        {canErase && (
+          <div style={{ marginTop: 8 }}>
+            {!confirmErase ? (
+              <Button variant="ghost" onClick={() => setConfirmErase(true)}>
+                Стерти персональні дані (GDPR)
+              </Button>
+            ) : (
+              <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
+                Імʼя/телефон буде знеособлено. Продовжити?
+                <Button onClick={async () => {
+                  try {
+                    await api(`/clients/${client.id}/erase`, { method: 'DELETE' });
+                    qc.invalidateQueries({ queryKey: ['clients'] });
+                    onClose();
+                  } catch {
+                    setMsg('Не вдалося стерти.');
+                    setConfirmErase(false);
+                  }
+                }}>Так</Button>
+                <Button variant="ghost" onClick={() => setConfirmErase(false)}>Ні</Button>
+              </span>
+            )}
+          </div>
+        )}
 
         <section style={{ marginTop: 14 }}>
           <h4 style={{ display: 'flex', gap: 6, alignItems: 'center' }}>

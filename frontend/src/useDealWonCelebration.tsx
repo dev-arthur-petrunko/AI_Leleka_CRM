@@ -47,8 +47,8 @@ export function useDealWonCelebration() {
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => { setToast(null); setSpectacle(false); }, 8000);
     const big = isBigWin(amount);
-    // Повний екран — тільки велика сума; решта — неблокувальний тост збоку.
-    setSpectacle(mode === 'all' && big);
+    // Виграш — завжди свято на весь екран; компактний тост лише в «Мінімум».
+    setSpectacle(mode === 'all');
     if (mode !== 'all') return; // «Мінімум»: тост без конфетті
     const rect = anchorEl?.getBoundingClientRect();
     const origin = rect
