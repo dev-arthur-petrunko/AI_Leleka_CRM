@@ -107,10 +107,10 @@ def test_sync_cursor_items_stable_ids(client, db):
     finally:
         del mp.PromAdapter.pull_orders
         syncmod.PAGE_LIMIT = 100
-    # друга сторінка пішла з курсором = датою останнього
-    assert calls[1] == "2026-09-02", calls
+    # друга сторінка пішла з курсором = датою останнього (нормалізована)
+    assert calls[1] == "2026-09-02T00:00:00+00:00", calls
     st = get_state(db, row)
-    assert st.cursor == "2026-09-02"
+    assert st.cursor == "2026-09-02T00:00:00+00:00"
     # позиції збережено
     items = db.query(Order).filter(Order.tenant_id == t.id).all()
     assert len(items) == 2
@@ -119,6 +119,20 @@ def test_sync_cursor_items_stable_ids(client, db):
     it = db.query(OrderItem).filter(OrderItem.order_id == o1.id).all()
     assert [(x.name, x.qty, float(x.unit_price)) for x in it] == [("Чохол", 2.0, 100.0)]
     assert db.query(Order).filter(Order.tenant_id == t.id).count() == 2
+
+
+def test_sync_hash_stable_without_position(client, db):
+    from app.services.sync import norm_date, stable_external_id
+
+    raw = {"client_first_name": "Б", "price": 200}
+    assert stable_external_id("prom", raw) == stable_external_id("prom", dict(raw))
+    # ті самі дані в іншому порядку ключів — той самий id
+    assert stable_external_id("prom", {"price": 200, "client_first_name": "Б"}) == \
+        stable_external_id("prom", raw)
+    assert norm_date({"date_created": "2026-09-02"}).startswith("2026-09-02T00:00:00")
+    assert norm_date({"created": "02.09.2026 10:00"}).startswith("2026-09-02T10:00")
+    assert norm_date({"created": 1788307200}).startswith("2026-09-02")
+    assert norm_date({}) is None
 
 
 def test_sync_failure_keeps_cursor(client, db):

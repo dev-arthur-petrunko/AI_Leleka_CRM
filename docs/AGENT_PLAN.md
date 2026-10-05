@@ -1,31 +1,29 @@
-# AI Leleka CRM — актуальное состояние проекта
+# AI Leleka CRM — полный разбор проекта
 
-> Переписано по факту кода на октябрь 2026 (коммитов: 67, `main`).
-> Старый план по фазам 0–8 остался в истории git; этот файл — описание того,
-> **что реально есть**, как запускать, как устроен дизайн и что осталось.
-> Если что-то здесь противоречит коду — верь коду и поправь файл.
+> Написано по факту кода, октябрь 2026. Коммитов: 68, ветка `main`.
+> Бэкенд: 19 API-модулей, 36 таблиц, 12 миграций, 96 тестов (92 passed + 4 skip: лендинг+Caddy skip без фронта/Caddyfile в контейнері).
+> Фронт: 15 экранов, 73 ключа `uk.json`, сборка ~7 с (main 381КБ + lazy Analytics).
+> Если строка ниже противоречит коду — верь коду и поправь строку.
 
 ---
 
-## 1. Что это
+## 1. Паспорт
 
 SaaS-CRM для украинского интернет-магазина: заказы с Prom/Rozetka/сайта,
-Нова Пошта, касса и оплата, Telegram и AI — в одном месте.
-Позиционирование: настройка за 15 минут, гривна, Telegram-first.
+Нова Пошта, касса и оплата (LiqPay/Mono), Telegram и AI — в одном месте.
+Позиционирование: настройка за 15 минут, гривна, Telegram-first, украинский язык.
 
-**Стек (факт):**
-
-| Слой | Технологии |
+| Слой | Факт |
 |---|---|
-| API | FastAPI 0.115, SQLAlchemy 2.0, Pydantic 2.9, Alembic 1.13 |
+| API | FastAPI 0.115, SQLAlchemy 2.0, Pydantic 2.9/Settings 2.5, Alembic 1.13, slowapi (rate-limit) |
 | БД / очередь | PostgreSQL 16, Redis 7, Celery 5.4 (worker + beat) |
-| Фронт | Vite 5 + React 18 + TypeScript 5, TanStack Query, Recharts, lucide-react |
-| Бот | aiogram 3 (digest-уведомления, `/start` с deep-link) |
-| Инфра | Docker Compose (dev + prod), GitHub Actions CI, Caddy-заглушка в prod |
+| Фронт | Vite 5 + React 18 + TS 5, TanStack Query 5, React Router 6, Recharts, lucide-react |
+| Бот | aiogram 3.15 + apscheduler |
+| Инфра | Docker Compose (dev + prod), Caddy 2 (прод), GitHub Actions (3 jobs), Playwright-снапшоты |
 
 ---
 
-## 2. Запуск (проверено живьём)
+## 2. Быстрый старт (проверено живьём)
 
 ### Dev
 
@@ -36,275 +34,323 @@ docker compose up --build -d
 # API: http://localhost:8000/docs, фронт: cd frontend && npm i && npm run dev
 ```
 
-Сервисы dev: `db` (5432 наружу), `redis` (6379 наружу), `api`
-(`alembic upgrade head && uvicorn --reload`, 8000), `worker`, `beat`.
+Сервисы: `db` (5432 наружу), `redis` (6379 наружу), `api`
+(`alembic upgrade head && uvicorn --reload`, 8000), `worker` (concurrency 2), `beat`.
+`SECRET_KEY` короче 32 — app падает на импорте (так задумано, старые дефолты
+из истории git считаются скомпрометированными).
 
-### Тесты (бэкенд, 69 шт — зелёные)
+### Тесты бэкенда
 
 ```bash
-# ВАЖНО: обе переменные указывают на ОДНУ тестовую БД (как в CI),
-# иначе тест воркера test_webhook_batch_dead_after_10 упадёт:
-# воркер читает через SessionLocal (DATABASE_URL), а фикстуры — через TEST_DATABASE_URL.
 docker compose exec -T -e DATABASE_URL=postgresql+psycopg2://leleka:leleka@db:5432/leleka_test \
   api alembic upgrade head
 docker compose exec -T -e DATABASE_URL=postgresql+psycopg2://leleka:leleka@db:5432/leleka_test \
   api python -m pytest -q
-# → 69 passed
+# → 92 passed, 4 skipped
 ```
 
-`TEST_DATABASE_URL` уже прописан в `docker-compose.yml` (тестовая БД `leleka_test`,
-conftest создаёт её сам). После изменения `backend/requirements.txt` обязательно
-`docker compose build api worker beat` — иначе в образе старые зависимости
-(так было: в образе не хватало pytest/httpx/celery и тесты вообще не стартовали).
+Три нюанса, в которых легко ошибиться:
+1. `conftest.py` **отказывается стартовать**, если БД не `*_test`, и приравнивает
+   `DATABASE_URL` к тестовой — воркер (`SessionLocal`) физически не может
+   задеть dev-базу. Без этого один тест молча писал бы в рабочую БД.
+2. После смены `backend/requirements.txt` — `docker compose build api worker beat`,
+   иначе в образе старые зависимости (было: не хватало pytest/httpx/celery).
+3. Тестовая БД копит мусор между прогонами (perf-тест создаёт 10k сделок);
+   при странных тормозах — truncate бизнес-таблиц в `leleka_test`.
 
 ### Фронт
 
 ```bash
 cd frontend && npm i && npx tsc --noEmit && npm run build
-# → чисто, dist/ собирается. Тестов фронта нет (только check-contrast, см. §8).
+node scripts/check-contrast.mjs   # 16/16 пар, 0 fail
+python scripts/snapshots.py --serve 5174 --api http://localhost:8000
+# 24 кадра (6 экранов × 390/1280 × Ранок/Вечір), проверка overflow и JS-ошибок
 ```
+
+Снапшоты требуют dist, собранный с `VITE_API_BASE=http://localhost:8000`,
+после прогона — пересобрать чистый (`npm run build` без переменной).
+Кадры лежат в `frontend/snapshots/` (в `.gitignore`, в репо не коммитятся).
 
 ### Прод
 
-`docker-compose.prod.yml`: БД/Redis без внешних портов, `uvicorn --workers 2`,
-healthcheck у api **и** у db, секреты только из env. Бекап: `scripts/backup.sh`.
+`docker-compose.prod.yml` + `Caddyfile`: БД/Redis без внешних портов,
+`uvicorn --workers 2 --proxy-headers --forwarded-allow-ips='*'`
+(за Caddy все IP выглядели бы одним — счётчики slowapi общие через Redis,
+при его падении fallback в память), healthcheck у api и db, фронт собирается
+сервисом `frontend` (`npm ci && build` → том `frontend_dist`).
+Caddy делит трафик **по `Accept`**: навігація (`text/html`) → SPA,
+fetch (`*/*`) → API по списку префиксов (покриття перевіряє
+`test_caddy_routes`); `/docs`+`/openapi.json`+`/redoc` в прод не проксуються;
+`?secret=` redactиться в логах + `log_skip /webhooks*`; остальное — 404.
+Переменные: `DB_*`, `REDIS_PASSWORD`, `SECRET_KEY`,
+`CREDENTIALS_KEY`, `DOMAIN`, `FRONTEND_ORIGINS=https://DOMAIN`,
+`PLATFORM_LIQPAY_*`, `PLATFORM_MONO_TOKEN`, `ANTHROPIC_API_KEY`,
+`BOT_TOKEN` (= `TELEGRAM_BOT_TOKEN` для API), `SENTRY_DSN`.
+Бот — отдельным профилем: `docker compose --profile bot up -d`
+(без токена `up -d` не должен падать).
+Сброс пароля ходит через **активную `email`-интеграцию** в БД, env-переменных
+SMTP нет — заведите интеграцию, иначе токен только в логе. Бекап: `scripts/backup.sh`.
 
 ---
 
-## 3. Бэкенд: карта (факт из `backend/app`)
+## 3. Сквозные механизмы
 
-`GET /health` — публичный. Коды: 401 — битый JWT (`core/deps.py`),
-402 — платная фича (`require_plan_feature`: `ai_analytics` на всём `/analytics`,
-провайдеры в `/integrations` через `_gate`), 403 — роль/подпись, 429 — slowapi.
-Каждый ответ несёт `X-Request-ID`.
+**Мультитенантность.** `tenant_id` — только из JWT (`get_current_tenant`),
+никогда из body/query. Каждый запрос к бизнес-таблицам фильтрует по нему;
+уникальности вида `UNIQUE(tenant_id, ...)`. Тест изоляции покрывает заказы,
+вхідні, інтеграції, повідомлення, пошук, види, тариф, audit (файл
+`test_tenant_isolation.py` + точечные тесты).
 
-| Роутер | Префикс | Что умеет |
+**Аутентификация.** Access (60 хв) + refresh (7 днів), `token_version` отзывает
+всё при смене пароля. Login: `username=email`, `client_id=slug компанії`
+(при дублях email без slug — 400 с требованием компании), `scope=код 2FA`.
+401 → клиент пробует refresh один раз → иначе logout. Регистрация создаёт
+тенант+owner и шлёт HMAC-токен подтверждения почты (24 ч, без миграции;
+вход НЕ блокируется — мягкое). Приглашённый входит по временному паролю
+и принудительно идёт на `/password` (`must_change_password` гейтит всё,
+кроме смены пароля/`/me`/refresh — и на бэке, и редиректом во фронте).
+2FA TOTP для owner/admin (`/2fa/setup` → QR, `/2fa/enable` → код).
+
+**RBAC.** write — owner/admin/manager; интеграции/тариф-апгрейд — owner
+(интеграции list/test — owner/admin). Менеджер видит 403 с людским текстом.
+
+**Paywall.** `require_plan_feature`: весь `/analytics` требует `ai_analytics`
+(402), провайдеры — через `_gate` (402). Базовые `/analytics/shop/*` —
+бесплатно (решение). Без PLATFORM-ключей платный апгрейд — 409.
+
+**Прочее.** Rate-limit: login 5–10/мин, confirm/register/refresh — тоже;
+тело вебхука ≤1 МБ; CORS только из `FRONTEND_ORIGINS`; `X-Request-ID` на каждый
+ответ; телефоны — только через `normalize_phone` (`050…`/`380…` → `+380…`,
+мусор → `None`); ключи интеграций — только Fernet-шифрованные, GET их
+не отдаёт (только `has_key`); бесплатный Team закрыт (счёт × места).
+
+**Вебхуки.** Единственный приём — `POST /webhooks/{provider}/{integration_id}`:
+секрет (`X-Webhook-Secret`/`?secret=`, `compare_digest`) или HMAC тела
+(`X-Signature`); unknown/inactive/без секрета — 404/401 без подробностей.
+Legacy `?tenant=slug` **удалён** (принимал без секрета). Дедуп
+`UNIQUE(tenant_id, provider, external_id)`; пустой external_id → `sha256` тела.
+`GET /pending` — только owner/admin своего тенанта.
+
+**Синхронизация (polling — основной путь, вебхуки — ускоритель).**
+`sync_state` на интеграцию: тянем от курсора (ISO-дата **последнего
+обработанного** заказа, не «сейчас»), пачками до 100, до 10 итераций;
+стоп — короткая страница или ноль новых. Курсор движется только вперёд
+и только после успеха. Без номера — стабильный `sync-<sha16 от тела>`
+(**без позиции в пачке**, иначе переупорядочивание = дубли).
+Даты нормализуются к ISO (ISO/`дд.мм.рррр`/unix; что не распознано — сырьём). Позиции передаются в `upsert_order`.
+Провал (включая 429 с уважением к `Retry-After`) — курсор стоит, пишется
+ошибка; 401/403 → `auth_failed`. Без ключа — честный `not_connected`,
+а не `ok`. Prom шлёт `date_from`; Rozetka его не задокументировала —
+принимаем, но не отправляем (останавливаемся по seen-набору).
+
+**Upsert заказа.** Единая точка (`services/orders.py::upsert_order`):
+клиент по телефону→email, `INSERT … ON CONFLICT (tenant_id, source,
+external_id)` (повтор = тот же заказ), позиции пересинхронизируются,
+смена статуса → `order_status_history` + автоматизации, новому заказу —
+черновая угода для канбана. Импорт CSV — через тот же upsert (до 2000 строк,
+5 МБ).
+
+**Автоматизации.** Движок «если → то»: триггеры (`new_lead`, `deal_stuck`,
+`payment_received`, `order_*`, …) + условия (стадии, суммы) → действия
+(менеджер, ТТН, письмо, задача, отзыв…). Каждый прогон — в `automation_logs`
+со статусом. Кнопка «5 правил одним кліком» идемпотентна (по именам).
+
+**Уведомления.** `notify.push/pull` — Redis-список `notif:{tenant}` (100 шт):
+ошибки фидов, stale-алерты. UI тянет опросом 30 с; эмодзи из серверных
+текстов на фронте чистятся.
+
+**AI-скоринг (честный).** `score_deal`: стадия + свежесть + сумма + сегмент →
+0–100 → hot/warm/cold. **Ручная температура клиента сильнее скоринга**
+(hot тянет ≥70, cold жмёт ≤39). Во внешний AI — только агрегаты без PII
+(`anonymize_deals`, `pii_sent=False`).
+
+---
+
+## 4. Бэкенд по роутерам
+
+| Роутер | Префикс | Методы и логика |
 |---|---|---|
-| `auth` | `/auth` | register/login (компанія+2FA)/invite/2FA (pyotp)/refresh/change-password/reset/telegram, `GET /me`, `PATCH /me/preferences` |
-| `clients` | `/clients` | CRUD + `PATCH /{id}` (сегмент/імʼя/телефон з нормалізацією + audit), импорт CSV, interactions, `DELETE /{id}/erase` (обезличивание) |
-| `audit` | `/audit` | читання `audit_log` свого тенанта (ліміт 100) + тест ізоляції |
-| `messages` | `/clients` | `/{id}/message`, `/{id}/message-preview` (тот же префикс — коллизии нет: подпути разные) |
-| `deals` | `/deals` | список (фильтры `stage`, `manager_id`), создание, `/export`, `/stuck`, `PATCH /{id}/stage` (причина програшу обязательна), `POST /{id}/convert-to-order` (идемпотентно) |
-| `orders` | `/orders` | список/карточка/статусы (PATCH пише історію + валідація)/ТТН/возвраты, ручное создание, импорт CSV, `/export`, `/tags/*`, `/custom-fields`, `/pipelines` |
-| `tasks` | `/tasks` | список/створення + `PATCH /{id}` (статус/пріоритет, `completed_at`) + `DELETE /{id}` |
-| `webhooks` | `/webhooks` | `POST /{provider}/{integration_id}` с HMAC/секретом, `GET /pending` — тільки owner/admin, `UNIQUE(tenant_id, provider, external_id)` |
-| `automations` | `/automations` | правила «если → то», логи |
-| `analytics` | `/analytics` | kpi/funnel/hot-leads/forecast/churn/loss-reasons/next-actions/dashboard (платно: `ai_analytics`) |
-| `shop` | `/analytics/shop` | revenue/ltv/rfm/returns/forecast-range — **без paywall** (базовые метрики бесплатны) |
-| `billing` | `/billing` | per-seat, LiqPay/Mono вебхуки с проверкой подписи; без PLATFORM-ключей апгрейд = 409 |
-| `integrations` | `/integrations` | CRUD, `/{p}/test`, `/{p}/import-orders`, `/{p}/webhook-url`, статусы `ok/error/auth_failed`, `last_sync_at` |
-| `feedhub` | `/feedhub` | sources/runs/products (YML-фиды) |
-| `inbox` | `/inbox` | диалоги/треды/ответы + `PATCH` (призначення/закриття), шаблони; входящие Telegram через бота |
-| `forms` | `/api/v1/forms` + `/forms` | публичный приём заявок (honeypot + rate-limit) |
-| `notifications` | `/notifications` | Redis-інбокс менеджера (`{text, kind, ts}`); екран + бейдж у шапці є |
-| `search` | `/search`, `/today` | глобальный поиск + агрегат «Що зробити зараз» |
-| `views` | `/views` | сохранённые фильтры (`saved_views`) |
+| `auth` | `/auth` | register (тенант+owner+письмо-подтверждение), login, refresh, change-password (отзывает токены), reset-request/confirm (30 хв, только хеш), 2fa/setup+enable, invite (временный пароль+must_change), telegram/link (проверка initData), `GET /me` (роль, преференсы, must_change, email_confirmed), `PATCH /me/preferences` (тема, сайдбар, анимации — синк между устройствами), confirm-email |
+| `audit` | `/audit` | чтение `audit_log` своего тенанта (лимит 100) с email актора |
+| `clients` | `/clients` | список (пошук з варіантами регістру кирилиці, `segment`, пагинация), создание, `PATCH /{id}` (имя/телефон с нормализацией/email/**segment/temperature** + audit), import-csv (фиксированные колонки, 1000, 5 МБ), interactions list/add, soft-`DELETE`, `/erase` (обезличивание, owner/admin) |
+| `messages` | `/clients` | `/{id}/message-preview` (AI-текст до отправки + `can_send`/`send_hint`), `/{id}/message` (422 без контакта канала; пишет в interactions) — коллизии с `clients.py` нет (подпути разные) |
+| `deals` | `/deals` | список (`stage`, `manager_id`), создание, `PATCH /{id}` (назва/сума/клієнт/менеджер/ймовірність, чужі — 400/404), `/export`, `/stuck`, `PATCH /{id}/stage` (причина програша обязательна; вероятность = f(стадия; `won_at`/`lost_at`; триггеры), `POST /{id}/convert-to-order` (идемпотентно, создаёт заказ `confirmed`), `POST /{id}/unlink-order` (рвёт связь, **заказ живёт**) |
+| `orders` | `/orders` | список (status/source/payment/date/q, пагинация), карточка (позиции/платежи/ТТН/история), создание, `PATCH /{id}/status` (**валидация + строка истории `manager`**), import-csv с маппингом, `/export`, `/{id}/shipments` (**реальный** вызов НП, ТТН/`STUB`), `/{id}/returns`, `/tags/*`, `/custom-fields` (CRUD), `/pipelines` (дефолт при пусто) |
+| `tasks` | `/tasks` | список (`status`, `assignee_id`), создание, `PATCH /{id}` (статус/пріоритет — `completed_at` сам), `DELETE /{id}` |
+| `webhooks` | `/webhooks` | signed-ingest, `GET /pending` (owner/admin) |
+| `automations` | `/automations` | rules CRUD, `seed-defaults` (5 штук), logs, stats («сработало N, ошибок M») |
+| `analytics` | `/analytics` | kpi/funnel/hot-leads/forecast/churn/loss-reasons/next-actions/dashboard одним запросом (платно) |
+| `shop` | `/analytics/shop` | revenue (по днях + AOV), ltv (топ + repeat_rate), rfm (`NTILE(5)` по delivered), returns (rate/count/by_reason/lost), forecast-range (взвешенная воронка + скользящее среднее → диапазон) |
+| `billing` | `/billing` | plans/current (места/сумма/фичи), upgrade (только owner; 0 → сразу, иначе счёт + LiqPay-форма/Mono-ссылка), orders (история счетов), вебхуки LiqPay/Mono с проверкой подписи (Mono сверяется сервер-сервер), `_confirm_paid` идемпотентен |
+| `integrations` | `/integrations` | CRUD (ключи шифруются, секрет вебхука генерится), `/{p}/test` (реальный ping; novaposhta/checkbox/liqpay/mono/sms — тестовые вызовы), `/{p}/import-orders` (идемпотентно), `/{p}/webhook-url` (URL+секрет+инструкция) |
+| `feedhub` | `/feedhub` | sources CRUD/run, runs, products, preview, mapping, merge-rules, `export.xml` |
+| `inbox` | `/inbox` | conversations (фильтр статуса), тред (conversation+messages), `PATCH` (assignee/status), reply (Telegram-реально, остальные — stub+очередь), templates CRUD, telegram-inbound (сопоставление по chat_id → лид) |
+| `forms` | `/api/v1/forms` + `/forms` | публичный приём заявок (секрет формы, honeypot, rate-limit) → клієнт+угода |
+| `notifications` | `/notifications` | pull Redis-инбокса |
+| `search` | `/search`, `/today` | поиск (клієнти ≤5/угоди ≤5/замовлення ≤5, телефоны нормализуются; `q` ≥ 2) + «Що зробити зараз» (прострочені/завислі 3д/новые+confirmed/открытые диалоги) |
+| `views` | `/views` | сохранённые фильтры (свои + общие) |
+| `shop`/`health` | — | `GET /health` публичный |
 
-Схема: 30+ таблиц, 12 миграций Alembic, HEAD `e2f3a4b5c6d7_client_temperature`
-(`users.preferences`, `deals.converted_order_id`, `saved_views`). Все downgrade на месте.
+**Сервисы.** `orders.upsert_order` (выше); `sync` (выше); `ai` (скоринг,
+прогноз скользящим средним, churn одним SQL, next-actions двумя запросами);
+`messaging` (AI-текст только из названия товара + локальные подстановки
+`{{client.first_name}}`/`{{order.number}}`/`{{shipment.ttn}}`);
+`billing` (`PLANS`: free 1 место/0 ₴, pro 5/350, team 10/300; `check_seats`
+402 при переполнении); `notify` (Redis); `feedhub` (fetch с ETag/304 и
+SSRF-guard, `defusedxml` против XXE, merge-стратегии); `shipments.poll_shipments`
+(трекинг НП → delivered/returned + задача); `automation/actions` (исполнители).
 
-Безопасность: tenant из JWT, изоляция `tenant_id` в каждом запросе (+ тест),
-credentials только Fernet-шифрованные, телефоны через `normalize_phone`,
-`SECRET_KEY < 32` — app не стартует (так задумано), старые дефолты скомпрометированы.
+**Адаптеры** (`integrations/`): `BaseAdapter` (ретраи 3×, 429 с `Retry-After`
+до 30 с, `stub()` без ключей). Prom (`token`; `date_from`/`limit`/`status`;
+`set_status` обратно), Rozetka (`token`, протухает — refresh не automatизован,
+зафиксировано), Nova Poshta (`api_key`; создание + трекинг ТТН),
+Checkbox (`login/password`), LiqPay (`public/private`), Mono (`token`),
+SendPulse/TurboSMS, Telegram (`bot_token`), Viber (`auth_token`), Email (SMTP),
+SMS. Подсказки ключей зашиты в мастере подключений во фронте.
 
----
+**Модели/миграции.** 36 таблиц: tenants/users, clients/deals/tasks,
+orders/items/payments/shipments/returns/history, integrations/webhook_events,
+automations+logs, conversations/messages/templates, feed_*/products,
+billing_orders, tags/custom/pipelines, sync_state/lead_forms, audit_log,
+saved_views, notifications нет (Redis). 12 миграций, HEAD
+`e2f3a4b5c6d7_client_temperature`; у всех есть downgrade; `db/schema.sql`
+— эталонная копия схемы (обновлять руками вслед за миграциями).
 
-## 4. Фронт: карта (`frontend/src`)
+**Воркеры/beat.** `process_webhook_batch` каждые 30 с (SKIP LOCKED, backoff
+`min(2^n,60м)`, dead после 10); `sync_due_integrations` каждые 10 мин;
+`run_stuck_check` ежечасно (лимит 200, иначе виснет на больших базах);
+`run_feed_scheduler` каждые 15 мин (+stale-алерты 6 ч); `run_np_poll`
+каждые 45 мин; `billing_recalc` 1-го числа 09:00 (только отчёт о дельте мест).
+Schedule-файл beat — в `/tmp` (битый файл в volume ронял сервис).
+`check_stuck`/`recalc`/`run_due` покрыты тестами.
 
-Корень `/` — **Головна (Today)**, не Dashboard (`pages/Dashboard.tsx` — legacy,
-из Routes удалён, файл оставлен как референс).
-
-| Экран | Роут | Данные | Состояния |
-|---|---|---|---|
-| Головна | `/` | `GET /today` — группы «Прострочені / Нові замовлення / Без руху / Непрочитані» + привітання за часом доби + чек-лист «Старт за 5 хвилин» | Skeleton / Empty / Error — да |
-| Угоди | `/deals` | канбан (**Pointer Events DnD**: миша+тач, плейсхолдер, автоскролл; `@dnd-kit` нема) + таблиця з селектом стадії, «Мої» через `manager_id`, створення угод (клієнт+назва+сума), РЕДАГУВАННЯ картки (назва/сума/клієнт, клік), конвертація в замовлення + розрив звʼязку, причина програшу,
-  дрібний підпис клієнта і температура на картці | да |
-| Замовлення | `/orders` | картки + **drawer картки**: позиції, лінія кроків статусу, зміна статусу, створення ТТН НП, повернення, історія, скасування/повернення в роботу; опитування кожні 30 с + спалах нових | да |
-| Клієнти | `/clients` | картки + **drawer**: історія спілкування, перегляд/відправка листа (AI/шаблон), зміна сегмента і температури, видалення/erase | да |
-| Вхідні | `/inbox` | діалоги + тред + відповідь (поле заблоковано без діалогу) + закриття/відкриття діалогу | да (+ «Оберіть діалог») |
-| Завдання | `/tasks` | групи Прострочені/Сьогодні/Завтра/Пізніше/Виконані, чекбокс виконання + видалення, пріоритет = іконка+текст, швидке створення | да |
-| Товари | `/products`, `/feedhub` | джерела фідів + журнал + каталог, кнопка «Оновити» | да |
-| Аналітика | `/analytics` | KPI-ряд з лічильником, виручка-бары (вісь з нуля), замовлення-лінія, воронка з %, прогноз факт+пунктир, топ LTV, втрати/повернення, **RFM-сегменти, прогноз діапазоном, AI «Наступні дії», ризик відтоку**; при 402 — банер про тариф, виручка показується | да |
-| Інтеграції | `/integrations` | статус іконка+текст, `last_sync_at/last_error`, «Синхронізувати» + «Тест», **майстер: провайдер → ключ → перевірка → адреса вебхука** | да |
-| Налаштування | `/settings` | тема, анімації (на сервер), «я», **воронки, свої поля (CRUD), теги, журнал змін**, посилання на команду/безпеку | Skeleton/Error |
-| Автоматизації | `/automations` | **«5 правил одним кліком» (seed-defaults)**, список + статистика спрацювань, конструктор правило (тригер→дія), журнал | да |
-| Тариф | `/billing` | плани, поточний, апгрейд (LiqPay-форма/Mono-посилання, 409/403 по-людськи), історія рахунків, **запрошення в команду з тимчасовим паролем** | да |
-| Сповіщення | `/notifications` | стрічка з Redis-інбоксу, опитування 30 с; дзвіночок у шапці з бейджем | да |
-| Безпека | `/password` | зміна пароля, 2FA (QR + код); примус при `must_change_password` | — |
-| Вхід | `/login` | email + пароль + **компанія + 2FA-код**, реєстрація компанії, **автовхід у Telegram Mini App** | — |
-| UI-kit | `/ui-kit` | демо компонентів (не для продакшена) | — |
-
-API-клиент (`api.ts`): `HttpError(status)` на любой не-OK (кроме 401 → refresh-токен
-один раз, потім чистка токенів і редирект на логін); `error` из useQuery реально
-сетится, экраны показывают `ErrorState` с «Повторити». Таймаут 8 с.
-
----
-
-## 5. Дизайн-система (факт, обязательно для любых правок)
-
-- **Токены — единственный источник цвета.** База в `styles/tokens.css`,
-палитра в `styles/brand-tokens.css` (тёплая «Лелека»: крем, терракота, очерет).
-Hex в `.tsx` запрещён (исключение — SVG-градиенты и частицы конфетти как графика).
-- **Темы «Ранок» / «Вечір»**: `data-theme` на `<html>`, режимы
-`auto-time (07:00–19:00, Europe/Kyiv) / morning / evening / system / telegram`,
-anti-flash скрипт в `index.html`, сохранение в `users.preferences` + localStorage-кэш.
-- **Каркас**: ≥1024px — сворачиваемая боковая рейка (Ctrl+B) с бейджами;
-<1024px — нижнее меню из 5 иконок (Головна, Угоди, Замовлення, Вхідні, Ще);
-верхняя панель: крошки, поиск Ctrl+K, «+ Створити», тема. Контейнер ≤1440px.
-- **Компоненты** (`components/ui.tsx`): Button / Input / Select / Checkbox /
-Badge (тон+текст) / Card (`glass`) / Skeleton / EmptyState (с действием) /
-ErrorState (с «Повторити») / Tabs. Иконки — только `lucide-react`, эмодзи в UI запрещены.
-- **Подписи** — только через `i18n/uk.json` (`stage.*`, `order.*`, `pay.*`,
-`source.*`, `segment.*`, `score.*`, `prio.*`, `feed.*`, `ch.*`, `conv.*`, `theme.*`,
-`nav.*`).
-Сырые коды (`negotiation`, `prom`, `hot`) пользователю не показываются.
-- **Сущности не путать**: карточки угод — «Угода #…», чек — «Замовлення».
-- **Демо**: только явное (`?demo=1` / `DEMO_MODE`) с плашкой «Демо-дані»; молчаливых
-моков при ошибке API нет — есть баннер/состояние ошибки.
-- **Статус = цвет + иконка + текст**; текст ≥12px; цели нажатия ≥40px на телефоне;
-`aria-label` у иконок-кнопок; `prefers-reduced-motion` глушит анимации.
-- **Анімації — `styles/motion.css`**: тривалості `--dur-120/150/200/320/600/1200`
-і `--ease-out`; тільки transform/opacity; переходи сторінок 150мс, скелетон-шимер,
-лічильники, тости, drawer, спалах нового замовлення, лінія кроків + машинка НП,
-View Transitions для теми, sway-лелека в пустих станах, press/shake/pulse.
-`html[data-anim]` керує всім (`all/min/off`, з сервера), `prefers-reduced-motion`
-глобально глушить. Виграш — fullscreen (компактний тост лише в «Мінімум»).
+**Бот** (`bot/`, aiogram 3): `/start` с deep-link, кнопки-заглушки
+(дёрнуть CRM API — TODO), дайджесты 09:00/18:00 — пока лог-заглушка
+(подписок по тенантам нет в модели — честно). В compose — профиль `bot`.
 
 ---
 
-## 6. Инфра и смежное
+## 5. Фронтенд
 
-- **CI** (`.github/workflows/ci.yml`): Postgres+Redis services, install,
-`compileall`, `alembic upgrade head`, `pytest -q`, `check-contrast`.
-`ruff`, `gitleaks`, `pip-audit` — стоят, но с `|| true` (не блочат).
-- **Бот** (`bot/`): aiogram 3, `BOT_TOKEN` обязателен; утренний/вечерний дайджест —
-пока лог-заглушка; в compose сервиса `bot` **нет** (запуск вручную).
-- **Воркеры**: `process_webhook_batch` (SKIP LOCKED, backoff `min(2^n,60м)`, dead
-после 10 попыток), sync по курсору, НП-трекінг, stuck, білінг, фіди.
-- **Доки**: `AGENT_PLAN_UI.md` (каркас/темы/экраны — выполнено),
-`AGENT_PLAN_UI_BRAND.md` (тёплая палитра победила — выполнено),
-`AGENT_PLAN_LANDING.md` (аудит лендинга), `brand.md`, `landing-claims.md`,
-`BETA_TEST.md` (**устарел**: только API-сценарии, про React-фронт ни слова).
+**Каркас** (`App.tsx`). ≥1024px — сворачиваемая рейка (Ctrl+B, бейджи:
+задачи/вхідні/замовлення/інтеграції/сповіщення); <1024px — нижнее меню
+из 5 иконок; шапка: крошки, поиск Ctrl+K (палитра: клієнти/угоди/замовлення
++ действия), «+ Створити», колокольчик с пульс-бейджем, тема.
+Контейнер ≤1440px, `main` с `key=pathname` (переход 150мс), catch-all → `/`,
+принудительный `/password` при `must_change_password`.
 
----
+**API-клиент** (`api.ts`). `HttpError(status)` на любой не-OK (402/403
+видны экранам, а не молчат); 401 → один refresh → иначе logout+`/login`;
+таймаут 8 с; `login(email, password, company?, totp?)`,
+`register(...)`, `API_BASE` наружу. Контракта `{ok,…}` нет — не нужен:
+`useQuery.error` реально сетится.
 
-## 7. Проверено живьём (октябрь 2026)
+**i18n** (`uk.json`, 73 ключа): `nav.*` (13+), `action.*`, `state.*`,
+`stage.*`, `score.*` (hot/warm/cold), `segment.*`, `source.*`, `order.*` (7),
+`pay.*` (4), `prio.*`, `feed.*`, `ch.*`/`conv.*`, `theme.*`, `temp.*`.
+Сырые коды в UI запрещены (проверено grep-аудитом).
 
-| Проверка | Результат |
+**Экраны** (все — Skeleton/Empty с действием/Error с повтором):
+
+| Экран | Данные и действия |
 |---|---|
-| `docker compose ps` | 5/5 Up: api, db (healthy), redis, worker, **beat** (был остановлен — поднят) |
-| `GET /health` | `{"ok":true}` |
-| `pytest -q` (env как в CI) | **84 passed, 2 skipped (лендинг-тести skip без фронта в контейнері)** |
-| `ruff check backend` + `compileall` | чисто |
-| `tsc --noEmit` + `vite build` | чисто, `built in ~7s` |
-| Тест изоляции тенантов / публичных endpoints | зелёные |
-
-**Исправлено в ходе ревизии:** образы пересобраны (не хватало pytest/httpx/celery);
-`TEST_DATABASE_URL` добавлен в compose; поднят beat; `tags_router`-пустышка удалён;
-`@app.on_event` → `lifespan`; healthcheck db в prod; `api.ts` бросает `HttpError`
-(401/402/403 больше не молчат); `Analytics loading` — `||`; «Мої» в угодах работает
-через `manager_id`; создание угод — диалогом (был `alert`); кнопка «Тест» интеграций
-вызывает API (была мёртвой); мёртвые Bell/ThemeToggle/MOBILE/Dashboard-импорт убраны;
-логотип бандлится импортом (был 404); эмодзи/hex в UI вычищены;
-`SettingsConfigDict` вместо deprecated `class Config`.
-
-**Другий прохід (аудит кабінету):** канбан переписано на Pointer Events
-(HTML5-DnD помирав від ре-рендера і мовчав на тачі) + селект стадії в таблиці;
-`PATCH/DELETE /tasks` + чекбокси; скасування/повернення замовлення в роботу
-(+ історія переходів з `source=manager`, валідація статусів); `PATCH /clients`
-(сегмент/телефон + audit); `GET /audit` + тест; час у сповіщеннях замість epoch;
-чесний `ok`-чек оновлення фідів; закриття діалогів; LiqPay-форма і рахунки в тарифі;
-AI-картки «Наступні дії»/відтік; `.gitignore` був частково в UTF-16 — запис
-про celerybeat ігнорувався, починено.
-
-**Четвертий прохід (угоди + точний аудит):** drag переписано на прямий DOM-ghost
-(картка їде за курсором через rAF, без ре-рендерів; посадка з transition);
-виграш — знову fullscreen за замовчуванням; клік після drag не відкриває редактор.
-
-**Третій прохід (безпека/синк/прод/CI):** conftest відмовляється стартувати не на
-`*_test` і рівняє `DATABASE_URL` на тестову (захист dev-бази); legacy-вебхук
-`?tenant=slug` видалено; sync переписано (курсор = дата останнього, пачки до 100,
-стабільні `sync-<sha>`, позиції, 429 з Retry-After, `not_connected` без ключа);
-prod: Caddy + frontend-збірка + усі env + bot + `Caddyfile`; CI блокуючий
-(ruff/gitleaks/pip-audit без `|| true`, gitleaks ставиться, job фронта і snapshots);
-contrast рахує резолвлені кольори і впіймав темну primary (виправлено `#B8552A`);
-лендинг: прибрані localhost і биті посилання, фраза про «зіллють» замінена фактами,
-картинки ужаті ~2×, лого 1142→73КБ, privacy в бренді + копія в public/;
-email-confirm без міграцій (HMAC-токен); тести ТТН/оплати/воркерів;
-`stuck_checker` з лімітом (без нього висів на 140k рядків); beat з `/tmp`-розкладом
-(битий файл роняв сервіс); знімки 24/24 чисті (знайшли overflow від input без
-border-box — виправлено глобально).
+| Головна `/` | Привітання за часом + онбординг «Старт за 5 хвилин» (магазин/замовлення/правила/команда + прогрес) + групи «Прострочені / Нові / Без руху / Непрочитані» |
+| Угоди `/deals` | Канбан на **Pointer Events** (миша+тач, ghost їде за курсором через rAF, плейсхолдер, автоскролл, отмена 8 с) + таблиця з селектом стадії; «Мої» через `manager_id`; створення; види (створити/застосувати); **клік по картці — редактор** (назва/сума/клієнт); дрібний підпис клієнта; **температура клієнта на картці** (селект, скоринг перераховується); конвертація → замовлення (fullscreen-свято), причина програшу; меню звʼязку «Відкрити/Розірвати» (замовлення живе) |
+| Замовлення `/orders` | Картки (№+джерело, чипи статусу/оплати, сума) + **drawer**: позиції, оплати, лінія кроків зі «їдучою» машинкою НП, зміна статусу, **Скасувати/Повернути в роботу** (с подтверждением), ТТН НП, повернення, історія (`manager`-рядки пишет бэк); фільтри статус/джерело/оплата/пошук; опрос 30 с + терракотовый спалах новых + тост; `?order=` открывает карточку |
+| Клієнти `/clients` | Картки (аватар-ініціал, імʼя окремо, телефон окремо `tel:`+копія, сегмент+температура) + **drawer**: сегмент-селект, температура (Авто/…), історія, перегляд/відправка (AI/шаблон), видалення + GDPR-erase (owner/admin); імпорт CSV (фиксированные колонки, 1000) |
+| Вхідні `/inbox` | Діалоги + тред + відповідь (поле мертве без діалогу), канали/статусы через словарь, закрити/відкрити, «Взяти собі» |
+| Завдання `/tasks` | Групи (Прострочені/Сьогодні/Завтра/Пізніше/Виконані), чекбокс + видалення (оптимистично), пріоритет іконка+текст, швидке створення |
+| Товари `/products`,`/feedhub` | Джерела (статус іконка+текст, створення/видалення, Оновити з чесним `ok`), журнал, каталог |
+| Аналітика `/analytics` | Период 7/30/90; KPI с лічильником (виручка/замовлення/AOV/ліди/конверсія/повтори/повернення); виручка-бары (вісь з нуля); лінія замовлень; воронка з % і сумами; факт+пунктир + сума; топ LTV + repeat; втрати + повернення; **RFM**; **прогноз діапазоном**; **AI «Наступні дії» + ризик відтоку**; 402 → банер, виручка видна |
+| Інтеграції | Статус + `last_sync_at/last_error`, Синхронізувати + Тест (реальные вызовы), **майстер** (провайдер → ключ/JSON по подсказкам → перевірка → webhook-URL+секрет) |
+| Налаштування `/settings` | Вигляд (тема + границы авто), анімації (на сервер), команда/безпека (ссылки), воронки (чтение), свої поля (CRUD), теги, **журнал змін** |
+| Автоматизації `/automations` | «5 правил одним кліком» (идемпотентно), список + статистика, конструктор (11 тригеров × 7 дій), журнал (статус/дата/помилка) |
+| Тариф `/billing` | Поточний (місця/сума/фічі), плани, апгрейд (LiqPay-форма / Mono-ссилка / людські 409/403), рахунки, запрошення (пароль показать коллеге) |
+| Сповіщення `/notifications` | Redis-стрічка (эмодзи сервера чистятся, epoch → дата), опрос 30 с |
+| Безпека `/password` | Смена пароля (отзывает сессии → разлогин — задумано), 2FA (QR-строка + код) |
+| Вхід `/login` | Email+пароль+компанія+2FA, регистрация (подсказка про лимит пароля и письмо), токен подтверждения, автовход в Telegram Mini App |
 
 ---
 
-## 8. Известные зазоры (не баги, но знать)
+## 6. Дизайн-система (обязательно для правок)
 
-1. `check-contrast` рахує резолвлені кольори обох тем (16 пар, 0 fail).
-   Історія: був vacuous-SKIP, після переписання впіймав primary 3.58 (виправлено).
-2. Воркер использует только `SessionLocal` — тесты обязаны гнать с
-`DATABASE_URL == TEST_DATABASE_URL` (§2), иначе 1 красный.
-3. Бандл ~700 КБ (recharts+framer-motion), чанк-варнинг Vite; code-splitting не настроен.
-4. ~20k warnings в pytest: `jose.utcnow()` deprecated + pydantic-ворнинги — шум, не ошибки.
-5. `ruff/gitleaks/pip-audit` в CI не блочат (`|| true`).
-6. `/analytics/shop/*` без paywall — решение: базовые метрики бесплатны, AI — платно.
-7. Фронт-тестов нет (ни unit, ни Playwright-снапшотов 390/1280 — скрипты не заведены).
-8. Бота нет в compose; дайджесты-заглушки.
-9. `BETA_TEST.md` устарел; `Dashboard.tsx` — legacy.
-10. UI-зазоры (API є): створення/застосування видів, створення джерела фіда і маппінг,
-    імпорт/erase клієнтів з UI, фільтри оплати/пошуку в замовленнях, призначення
-    менеджера діалогу.
+- Цвета только из токенов (`brand-tokens.css` — тёплая «Лелека»: крем/терракота;
+  hex в `.tsx` запрещён, исключение — SVG/конфетти). Контраст проверяется
+  резолвером (16 пар, было поймано 3.58 → исправлено).
+- Темы «Ранок/Вечір»: `data-theme`, `auto-time` 07–19 Europe/Kyiv, anti-flash,
+  сервер+кэш, Telegram-режим, View Transitions со сменой.
+- `html[data-anim]` (`all/min/off`, с сервера; `prefers-reduced-motion` → min):
+  `motion.css` — длительности 120–1200мс, только transform/opacity
+  (переходы, шиммер, тосты, drawer, спалах, шаги+машинка, sway-лелека, press/shake/pulse, плейсхолдер, stagger-картки, hover-ліфт).
+- Компоненты `ui.tsx` (+ `press`, `skeleton-shimmer`, лелека в EmptyState).
+  Глобальный `box-sizing: border-box` (ловил overflow инпутов на 390px).
+  Эмодзи запрещены; статус = цвет+иконка+текст; ≥12px; цели ≥40px; aria-labels.
+- Угода ≠ Замовлення («Угода #…»).
 
 ---
 
-## 9. Что осталось (честно)
+## 7. Инфра
 
-- [ ] Налаштування как экраны: ~~команда/роли (invite), воронки, шаблоны,~~ тариф/оплата — сейчас заглушки текстом.
-  Готово: команда (invite), воронки (читання), свої поля, теги, пароль/2FA, журнал змін.
-- [ ] Карточки заказа/клиента как drawer с вкладками (позиции, ТТН, історія, листування).
-  Частково готово: обидва drawer є (позиції/ТТН/повернення/історія; листування/шаблони/відправка).
-  Немає вкладок і друку накладних.
-- [x] Задачі: чекбокси + видалення (`PATCH/DELETE /tasks` + тести). Готово.
-- [x] Скасування замовлення + повернення в роботу + історія. Готово.
-- [x] Сегмент клієнта (`PATCH /clients` + тест). Готово.
-- [x] Журнал змін (`GET /audit` + тест). Готово.
-- [x] Недостаючі кнопки готовых API: види (створити/застосувати), джерело фіда
-  (створити/видалити), імпорт CSV і erase клієнтів, фільтри оплати/пошуку в замовленнях,
-  «Взяти собі» в діалозі, токен підтвердження пошти на вході. Готово.
-- [x] Ізоляція розширена: замовлення, вхідні, інтеграції, повідомлення, пошук, види,
-  тариф, audit (+ окремі тести audit/tasks/status/segment/ops). Тест цін лендинг-PLANS.
-  Снапшоти 24/24 (скрипт + CI-job). Готово.
-- [x] Канбан: Pointer-DnD з ghost за курсором (rAF), селект стадії, редагування
-  картки кліком (`PATCH /deals` + тест), каскадна поява, hover-ліфт, лічильники сум.
-  Виграш — fullscreen (мінімум — тост). Готово.
-- [x] Точний аудит (39 статичних викликів бʼються 1-в-1, shapes звірено, TODO/консолі
-  чисто): виправлено keydown-слухач без deps і повторний PATCH статусу; відомі
-  quirks — `cmdk`/`framer-motion` без імпорту, бейдж сповіщень без «прочитано»,
-  undo після конвертації лишає замовлення, зміна пароля розлогінює (задумано).
-- [ ] Масові дії в замовленнях; призначення менеджера діалогу (зараз лише «Взяти собі»),
-  шаблони швидких відповідей, статуси доставки.
-- [ ] Вручну на проді: справжній ключ Prom → замовлення → ТТН; тестовий платіж
-  LiqPay/Mono → вебхук → тариф; beat-задачі в проді; invite → 2FA шлях;
-  чистий сервер з доменом і HTTPS; відновлення з бекапа; навантаження 50×1000;
-  ролі/телефон/анімації; юрист + юрособа + реальна пошта в privacy.
-- [ ] Экспорт CSV/XLSX из UI (API `/export` есть), PDF-отчёт по расписанию.
-- [ ] Соц-каналы (Instagram/Facebook/WhatsApp), телефония — по спросу.
-- [ ] Бот в compose — є (профіль `bot`); дайджести поки заглушка в лозі
-  (підписки за тенантами не змодельовано). Готово: экран уведомлений + бейдж.
-- [ ] Realtime: зараз опитування 30 с (замовлення, сповіщення); справжні SSE/WebSocket — пізніше.
-- [ ] ИИ-помощник у «Вхідні» (чернетка по контексту), розсилки по RFM (зі згодами), склад/маржа/ABC,
-  кілька магазинів, кошики, календар задач, друк документів, публічний API, PWA, дзвінки, англійська.
-- [ ] Фронт-тесты + Playwright-снапшоты + настоящий contrast-check по резолвленным токенам.
-- [ ] Затянуть `ruff/gitleaks/pip-audit` в CI в blocking; code-splitting бандла.
-- [ ] Юрблок фазы 8 (privacy/oferta/erase-flow) + нагрузочный тест + восстановление из бекапа.
-- [ ] Обновить `BETA_TEST.md` под React-фронт; удалить `Dashboard.tsx` или вернуть как `/dashboard`.
+- **Dev**: db/redis наружу, api+worker+beat, volume с кодом.
+- **Prod** (`docker-compose.prod.yml` + `Caddyfile`): всё закрыто кроме 80/443;
+  `frontend` собирает кабинет+лендинг в том; Caddy: `Accept: text/html` → SPA,
+  fetch → API по списку (`test_caddy_routes` следит), docs скрыты,
+  секрет в логах redact + `log_skip /webhooks*`, остальное 404; bot — профиль.
+- **CI** (блокирующий): backend — gitleaks(ставится)/`ruff==0.16.9`/pip-audit/
+  compile/alembic/pytest/contrast; frontend — ci/tsc/build (main 381КБ +
+  lazy Analytics); snapshots (postgres+redis, api, build, 24 кадра, артефакты).
+- Скрипты: `snapshots.py` (регистрация чистого тенанта, 6 экранов, overflow+
+  JS-ошибки = fail), `check-contrast.mjs`, `backup.sh` (cron 03:00, ротация 14).
+- Лендинг: `frontend/public/about.html` (прод, без localhost/битых ссылок,
+  факты вместо лозунгов, WebP ~65–169КБ вместо 520–780КБ) + `privacy.html`
+  (бренд, TODO юрлица/почты для юриста); `frontend-preview/` — референс-прототип.
 
 ---
 
-## 10. Правила для агента (коротко, детали — `CLAUDE.md`, навыки — `.claude/skills/`)
+## 8. Проверено и история
 
-- Перед кодом — этот файл + нужный скилл (`leleka-ui` для фронта обязателен).
-- Одна задача за раз; тесты зелёные до коммита; схема — только Alembic с downgrade.
-- Не трогать `.env`/секреты, не коммитить ключи, только тестовая БД.
-- Не угадывать формат провайдеров — сверять с официальной документацией.
-- Тесты бэка — командой из §2 (обе URL на тестовую БД!); фронт — `tsc + build`.
-- После UI-правок: снапшоты 390/1280 в обеих темах (когда появятся скрипты).
+| Проверка | Итог |
+|---|---|
+| `pytest` (env как в CI) | 92 passed, 4 skipped |
+| `ruff` / `compileall` / `tsc` / `vite build` / contrast 16/16 / snapshots 24/24 | чисто |
+| Изоляция: заказы/вхідні/інтеграції/повідомлення/пошук/види/тариф/audit + точечные | зелёные |
+| 39 статичных вызовов фронта ↔ роуты, shapes ответов, TODO/консолі | 1-в-1 |
+
+Проходы: (1) каркас/тариф/авторизация/темы; (2) drawers/автоматизации/тариф/
+сповіщення/auth/DnD-pointer/motion; (3) тест-DB guard/вебхуки/sync/prod/CI/
+contrast/лендинг/email-confirm/воркеры/кнопки/изоляция/снапшоты;
+(4) редактирование угод/температура/undo-связей/DnD-ghost/fullscreen;
+(5) shipments/actions/demo_seed-тесты, sync-хеш без позиции + даты,
+Caddy Accept-маршрутизация (validate + тест), лимиты proxy+Redis,
+CI ruff-пин, lazy Analytics (781→381КБ), WebP, aware `_now()`,
+`enforce_password_change` удалён;
+(6) недостающие кнопки готовых API (виды создать/применить, джерело фида,
+импорт/erase клиентов, фильтры оплаты/поиска, «Взяти собі», токен confirm),
+unlink-меню + дрібний клієнт на угодах, температура на картках.
+
+---
+
+## 9. Зазоры и roadmap (честно)
+
+Открыто: массовые действия; менеджер диалога (есть «Взяти собі»); шаблоны
+быстрых ответов; вкладки в drawer и друк; CSV/XLSX/PDF из UI; соцсети и
+телефония; SSE вместо опроса; AI-чернетки; розсилки с согласиями; склад/ABC;
+мультимагазин; публичный API; PWA; английский. Вручную на проде: реальный
+ключ Prom → ТТН; живой платёж → вебхук; restore из бекапа (некопия, пока
+не восстановлена); нагрузка 50×1000; юрист/юрлицо/почта; Lighthouse.
+Известные quirks: бейдж сповіщень без «прочитано»; undo після конвертації
+лишає замовлення; Rozetka `date_from` не отправляется (нет в задокументованому
+API — sync останавливается по seen-набору); форматы дат провайдеров
+нормализуются, но сверены только с фикстурами, не с живыми ответами.
+
+---
+
+## 10. Правила агента
+
+- Перед кодом — этот файл + скилл (`leleka-ui` для фронта, `leleka-migrations`
+  для схемы — только Alembic с downgrade + `schema.sql`).
+- Одна задача; тесты зелёные до коммита; `.env`/ключи не коммитить; только
+  тестовая БД (conftest страхует, но не уповай).
+- Форматы провайдеров — только по официальной документации.
+- Бэк: командой из §2 (обе URL тестовые). Фронт: `tsc + build (+contrast,
+  snapshots при UI-правках)`.

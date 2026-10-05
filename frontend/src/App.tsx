@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3, Bell, CheckSquare, ChevronLeft, ChevronRight, Crown, Ellipsis, Home, Inbox, KanbanSquare,
@@ -11,8 +11,8 @@ import Today from './pages/Today';
 import Clients from './pages/Clients';
 import InboxPage from './pages/InboxPage';
 import TasksPage from './pages/TasksPage';
-import Analytics from './pages/Analytics';
-import IntegrationsPage from './pages/IntegrationsPage';
+// Recharts їде окремим чанком — аналітика вантажиться ліниво
+const Analytics = lazy(() => import('./pages/Analytics'));import IntegrationsPage from './pages/IntegrationsPage';
 import SettingsPage from './pages/SettingsPage';
 import UiKit from './pages/UiKit';
 import PasswordPage from './pages/PasswordPage';
@@ -407,7 +407,11 @@ export default function App() {
               <Route path="/clients" element={<Clients />} />
               <Route path="/inbox" element={<InboxPage />} />
               <Route path="/tasks" element={<TasksPage />} />
-              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/analytics" element={
+                <Suspense fallback={<div className="glass" style={{ padding: 28 }}>Завантаження…</div>}>
+                  <Analytics />
+                </Suspense>
+              } />
               <Route path="/integrations" element={<IntegrationsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/ui-kit" element={<UiKit />} />

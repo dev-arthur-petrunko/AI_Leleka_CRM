@@ -1,7 +1,7 @@
 """SQLAlchemy-модели 1-в-1 под db/schema.sql."""
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     BigInteger,
@@ -27,8 +27,14 @@ def _uuid() -> Mapped[UUID]:
     )
 
 
+def _utcnow():
+    return datetime.now(UTC)
+
+
 def _now():
-    return datetime.utcnow
+    # default=_now() обчислюється при імпорті — повертаємо callable,
+    # щоб кожен рядок отримував СВІЙ час (і з таймзоною, не naive).
+    return _utcnow
 
 
 class Tenant(Base):

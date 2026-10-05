@@ -73,8 +73,8 @@ def test_deal_unlink_order_flow(client, db):
     assert r.json() == {"ok": True, "order_id": oid}
     # замовлення ЖИВЕ в «Замовленнях», звʼязку нема
     assert client.get(f"/orders/{oid}", headers=h).status_code == 200
-    patched = [x for x in (client.get("/deals", headers=h).json()["items"])
-               if x["id"] == did][0]
+    patched = next(x for x in (client.get("/deals", headers=h).json()["items"])
+                   if x["id"] == did)
     assert patched["converted_order_id"] is None
     # чужий тенант — 404, без токена — 401
     t2 = make_tenant(db)

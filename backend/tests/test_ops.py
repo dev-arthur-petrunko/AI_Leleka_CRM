@@ -116,3 +116,50 @@ def test_confirm_email_flow(client, db):
     assert r.json() == {"ok": True, "email": email}
     assert client.get("/auth/me",
                       headers={"Authorization": f"Bearer {tok}"}).json()["email_confirmed"] is True
+
+
+def test_poll_shipments_delivered(client, db):
+    from app.core.security import encrypt_credentials
+    from app.integrations.novaposhta import NovaPoshtaAdapter
+    from app.models import Integration, Shipment
+
+    t = make_tenant(db)
+    u = make_user(db, t, role="owner")
+    h = auth_headers(u)
+    db.add(Integration(tenant_id=t.id, provider="novaposhta", is_active=True,
+                       credentials=encrypt_credentials({"api_key": "k"})["enc"],
+                       settings={}))
+    db.commit()
+    oid = _order(client, db, h)
+    order = None
+    from app.models import Order
+
+    order = db.query(Order).filter(Order.id == oid).first()
+    ship = Shipment(tenant_id=t.id, order_id=order.id, carrier="novaposhta",
+                    ttn="TTN1")
+    db.add(ship)
+    db.commit()
+    NovaPoshtaAdapter.track = lambda self, ttn: {
+        "ok": True, "data": {"Status": "Вручено", "StatusCode": "9"}}
+    try:
+        from app.services.shipments import poll_shipments
+
+        out = poll_shipments(db)
+    finally:
+        del NovaPoshtaAdapter.track
+    assert out["delivered"] >= 1 and not out["errors"], out
+    db.refresh(ship)
+    db.refresh(order)
+    assert ship.delivered_at is not None
+    assert order.status == "delivered"
+
+
+def test_demo_seed_idempotent(db):
+    from app.models import Tenant, User
+    from app.workers.demo_seed import seed
+
+    slug = f"demo-{uuid.uuid4().hex[:6]}"
+    assert seed(slug)["ok"] is True
+    assert seed(slug)["ok"] is True  # повтор не дублює
+    t = db.query(Tenant).filter(Tenant.slug == slug).first()
+    assert db.query(User).filter(User.tenant_id == t.id).count() == 3

@@ -1,19 +1,47 @@
 # Прод-вхід: HTTPS сюди, далі — статика фронта або API.
 # Домен береться з ${DOMAIN} (DNS має вказувати на сервер).
+#
+# Розділення SPA/API — за заголовком Accept, а не за шляхом:
+# навігація браузера шле `Accept: text/html`, а fetch() з api.ts — `*/*`.
+# Тому F5 на /deals віддає додаток, а fetch /deals — дані. Винятки нижче —
+# службові шляхи, які завжди йдуть в API або ніколи.
 {$DOMAIN} {
 	encode gzip
 
-	# API і службові шляхи — у бекенд (у фронта префікса /api нема,
-	# тому перелічуємо його кореневі маршрути явно)
-	@api path /auth* /clients* /deals* /orders* /tasks* /webhooks* /automations* /analytics* /billing* /integrations* /inbox* /forms* /api* /search /today /views* /health /docs* /openapi.json
+	# Логи без секрета вебхука (?secret=) + взагалі без логів вебхуків
+	log {
+		format filter {
+			wrap console
+			fields {
+				request>uri query {
+					replace secret {redacted}
+				}
+			}
+		}
+	}
+	log_skip /webhooks*
+
+	# API: усі префікси бекенда (покриття перевіряє тест test_caddy_routes).
+	# /docs*, /openapi.json, /redoc свідомо НЕ проксуємо — docs лишаються
+	# лише в dev; у проді схеми ендпоінтів ззовні не видно.
+	@api path /auth* /clients* /deals* /orders* /tasks* /webhooks* /automations* /analytics* /billing* /integrations* /inbox* /forms* /api* /search /today /views* /audit* /notifications* /feedhub* /health
 	handle @api {
 		reverse_proxy api:8000
 	}
 
-	# Решта — зібраний фронт (кабінет + /about.html), SPA через /index.html
-	handle {
+	# SPA: тільки навігація браузера (fetch API сюди не потрапляє)
+	@spa {
+		header Accept *text/html*
+		not path /docs* /openapi.json /redoc* /health /forms* /api* /webhooks*
+	}
+	handle @spa {
 		root * /srv
 		try_files {path} /index.html
 		file_server
+	}
+
+	# Решта (боти, сканери, невідомі шляхи) — 404, а не index.html
+	handle {
+		respond "Not found" 404
 	}
 }

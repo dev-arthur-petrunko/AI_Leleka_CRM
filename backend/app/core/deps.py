@@ -50,13 +50,6 @@ def get_current_user(
     return user
 
 
-def enforce_password_change(user: User = Depends(get_current_user)) -> User:
-    """Блокує все крім зміни пароля, поки стоїть must_change_password."""
-    if user.must_change_password:
-        raise HTTPException(status_code=403, detail="Змініть тимчасовий пароль: POST /auth/change-password")
-    return user
-
-
 def get_current_tenant(current_user: User = Depends(get_current_user)) -> UUID:
     """Использовать во всех CRUD: .filter(Model.tenant_id == tenant_id)."""
     return current_user.tenant_id

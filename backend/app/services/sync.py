@@ -35,21 +35,49 @@ def get_state(db: Session, row: Integration) -> SyncState:
     return st
 
 
-def stable_external_id(provider: str, raw: dict, index: int) -> str:
+def stable_external_id(provider: str, raw: dict) -> str:
+    """Без номера — стабільний sync-<sha16 ВІД ТІЛА> (без позиції в пачці,
+    інакше інший порядок = інший id = дублі). Однакові дані = один id."""
     ext = str(raw.get("id") or raw.get("order_id") or raw.get("external_id") or "")
     if ext and ext != "0":
         return ext
     h = hashlib.sha256(json.dumps(
-        {"p": provider, "raw": raw, "i": index},
+        {"p": provider, "raw": raw},
         sort_keys=True, default=str).encode()).hexdigest()[:16]
     return f"sync-{h}"
 
 
-def order_date(raw: dict) -> str | None:
+def norm_date(raw: dict) -> str | None:
+    """Дата замовлення до порівнюваного ISO. Формати провайдерів різняться
+    (ISO / 'дд.мм.рррр [гг:хх]' / unix-timestamp), тому пробуємо по черзі;
+    що не розпізнали — повертаємо сирим рядком (краще, ніж нічого)."""
+    from datetime import datetime
+
     for k in DATE_KEYS:
         v = raw.get(k)
-        if v:
-            return str(v)
+        if v is None or v == "":
+            continue
+        if isinstance(v, (int, float)):
+            try:
+                return datetime.fromtimestamp(float(v), UTC).isoformat()
+            except (OverflowError, OSError, ValueError):
+                continue
+        s = str(v).strip()
+        cand = s.replace("Z", "+00:00")
+        try:
+            dt = datetime.fromisoformat(cand)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=UTC)
+            return dt.isoformat()
+        except ValueError:
+            pass
+        for fmt in ("%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M", "%d.%m.%Y",
+                    "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(s, fmt).replace(tzinfo=UTC).isoformat()
+            except ValueError:
+                continue
+        return s
     return None
 
 
@@ -121,10 +149,10 @@ def sync_integration(db: Session, integration_id) -> dict:
             if not orders:
                 break
             fresh = 0
-            for i, raw in enumerate(orders):
+            for raw in orders:
                 if not isinstance(raw, dict):
                     continue
-                ext = stable_external_id(row.provider, raw, total + i)
+                ext = stable_external_id(row.provider, raw)
                 if ext in seen:
                     continue
                 seen.add(ext)
@@ -136,7 +164,7 @@ def sync_integration(db: Session, integration_id) -> dict:
                     "items": o.get("items") or [], "raw": raw}, origin="sync")
                 total += 1
                 fresh += 1
-                d = order_date(raw)
+                d = norm_date(raw)
                 if d and (not max_date or d > max_date):
                     max_date = d
             if len(orders) < PAGE_LIMIT or fresh == 0:
