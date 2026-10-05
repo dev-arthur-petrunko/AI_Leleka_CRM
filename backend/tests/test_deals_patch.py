@@ -58,3 +58,27 @@ def test_deal_patch_isolation(client, db):
     # без токена — 401
     assert client.patch(f"/deals/{did}",
                         json={"title": "X"}).status_code == 401
+
+
+def test_deal_unlink_order_flow(client, db):
+    t, u, h, c, did = _mk(client, db)
+    # без звʼязку — 400
+    assert client.post(f"/deals/{did}/unlink-order",
+                       headers=h).status_code == 400
+    # конвертуємо, потім розриваємо
+    r = client.post(f"/deals/{did}/convert-to-order", headers=h, json={})
+    assert r.status_code == 200
+    oid = r.json()["order_id"]
+    r = client.post(f"/deals/{did}/unlink-order", headers=h)
+    assert r.json() == {"ok": True, "order_id": oid}
+    # замовлення ЖИВЕ в «Замовленнях», звʼязку нема
+    assert client.get(f"/orders/{oid}", headers=h).status_code == 200
+    patched = [x for x in (client.get("/deals", headers=h).json()["items"])
+               if x["id"] == did][0]
+    assert patched["converted_order_id"] is None
+    # чужий тенант — 404, без токена — 401
+    t2 = make_tenant(db)
+    u2 = make_user(db, t2, role="manager")
+    assert client.post(f"/deals/{did}/unlink-order",
+                       headers=auth_headers(u2)).status_code == 404
+    assert client.post(f"/deals/{did}/unlink-order").status_code == 401

@@ -196,3 +196,24 @@ def convert_to_order(deal_id: UUID, data: ConvertIn,
     d.stage = "won"
     db.commit()
     return {"order_id": str(order.id), "deduplicated": False}
+
+
+@router.post("/{deal_id}/unlink-order")
+def unlink_order(deal_id: UUID, user=Depends(_writer),
+                 db: Session = Depends(get_db)):
+    """Розірвати звʼязок угоди з замовленням (випадкова конвертація).
+    Замовлення лишається в «Замовленнях» — видаляємо лише звʼязок,
+    стадію не чіпаємо (її міняють drag/select)."""
+    d = db.query(Deal).filter(
+        Deal.id == deal_id, Deal.tenant_id == user.tenant_id
+    ).first()
+    if not d:
+        raise HTTPException(404, "Not found")
+    if not d.converted_order_id:
+        raise HTTPException(400, "Угода не повʼязана із замовленням")
+    order_id = str(d.converted_order_id)
+    d.converted_order_id = None
+    from datetime import datetime
+    d.last_activity_at = datetime.now(UTC)
+    db.commit()
+    return {"ok": True, "order_id": order_id}

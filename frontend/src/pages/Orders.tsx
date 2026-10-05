@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Banknote, ChevronLeft, ChevronRight, Package, Store, Truck } from 'lucide-react';
 import { api } from '../api';
@@ -32,6 +32,11 @@ export default function Orders() {
   const [page, setPage] = useState(0);
   const limit = 20;
   const [openId, setOpenId] = useState<string | null>(null);
+  const [params] = useSearchParams();
+  useEffect(() => {
+    const oid = params.get('order');
+    if (oid) setOpenId(oid);
+  }, [params]);
   const [flash, setFlash] = useState<Set<string>>(new Set());
   const known = useRef<Set<string>>(new Set());
   const [fresh, setFresh] = useState(0);

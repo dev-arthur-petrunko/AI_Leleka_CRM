@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Flame, Snowflake, Sun } from 'lucide-react';
 import { api } from '../api';
 import { useCountUp } from '../hooks/useCountUp';
@@ -26,11 +27,50 @@ function ColSum({ value }: { value: number }) {
   );
 }
 
-function PriorityChip({ score }: { score?: number }) {  const s = score ?? 50;
-  const Icon = s >= 70 ? Flame : s >= 40 ? Sun : Snowflake;
+function PriorityChip({ score }: { score?: number }) {  const s = score ?? 50;  const Icon = s >= 70 ? Flame : s >= 40 ? Sun : Snowflake;
   const label = s >= 70 ? t('score.hot') : s >= 40 ? t('score.warm') : t('score.cold');
   const tone = s >= 70 ? 'bad' : s >= 40 ? 'warn' : 'info';
   return <Badge tone={tone as 'bad'}><span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}><Icon size={12} />{label}</span></Badge>;
+}
+
+/** Температура клієнта прямо на угоді: ручна мітка сильніша за скоринг. */
+function TempControl({ clientId, temp }: { clientId: string; temp: string }) {
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const tone = temp === 'hot' ? 'bad' : temp === 'warm' ? 'warn' : temp === 'cold' ? 'info' : undefined;
+  return (
+    <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}
+      onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+      {temp ? (
+        <Badge tone={tone as 'bad'}>{t('score.' + temp)}</Badge>
+      ) : (
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('temp.auto')}</span>
+      )}
+      <select value={temp} aria-label="Температура клієнта" disabled={busy}
+        onChange={async (e) => {
+          const next = e.target.value;
+          setBusy(true);
+          try {
+            await api(`/clients/${clientId}`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ temperature: next }),
+            });
+            qc.invalidateQueries({ queryKey: ['deal-clients'] });
+            qc.invalidateQueries({ queryKey: ['hot-leads'] });
+          } catch { /* помилка — селект лишається, видно при рефетчі */ }
+          finally {
+            setBusy(false);
+          }
+        }}
+        style={{ fontSize: 11, padding: '4px 6px', borderRadius: 8,
+          border: '1px solid var(--border)', background: 'var(--bg)',
+          color: 'var(--text)', cursor: 'pointer', maxWidth: 110 }}>
+        <option value="">{t('temp.auto')}</option>
+        {(['hot', 'warm', 'cold'] as const).map((s) => (
+          <option key={s} value={s}>{t('score.' + s)}</option>))}
+      </select>
+    </span>
+  );
 }
 
 export default function Deals() {
@@ -173,9 +213,29 @@ export default function Deals() {
       `/deals?limit=200${mine && me.data?.id ? `&manager_id=${me.data.id}` : ''}`),
   });
   const clients = useQuery({
-    queryKey: ['deal-clients'], enabled: creating,
-    queryFn: () => api<{ total: number; items: { id: string; name: string }[] }>('/clients?limit=200'),
+    queryKey: ['deal-clients'],
+    queryFn: () => api<{ total: number; items: { id: string; name: string; temperature?: string | null }[] }>('/clients?limit=200'),
   });
+  const tempOf = (clientId: string) =>
+    clients.data?.items.find((c) => c.id === clientId)?.temperature || '';
+  const nameOf = (clientId: string) =>
+    clients.data?.items.find((c) => c.id === clientId)?.name || '';
+  const [linkMenu, setLinkMenu] = useState<string | null>(null);
+  const [linkConfirm, setLinkConfirm] = useState(false);
+  const [linkErr, setLinkErr] = useState('');
+  const nav = useNavigate();
+
+  async function doUnlink(d: Deal) {
+    setLinkErr('');
+    try {
+      await api(`/deals/${d.id}/unlink-order`, { method: 'POST' });
+      setLinkMenu(null);
+      setLinkConfirm(false);
+      qc.invalidateQueries({ queryKey: ['deals'] });
+    } catch {
+      setLinkErr('Не вдалося розірвати звʼязок.');
+    }
+  }
   const views = useQuery({
     queryKey: ['deal-views'],
     queryFn: () => api<any[]>('/views?entity=deals'),
@@ -361,14 +421,63 @@ export default function Deals() {
                         '--i': i % 8,
                         borderLeft: `4px solid ${d.stage === 'won' ? 'var(--stage-won)' : 'var(--stage-negotiation)'}` } as CSSProperties}>
                       <b>{d.title.replace(/^Замовлення\s*#?/, 'Угода #')}</b>
+                      {nameOf(d.client_id) && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {nameOf(d.client_id)}
+                        </div>
+                      )}
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.id.slice(0, 8)}</div>
-                      <div style={{ margin: '6px 0' }}><PriorityChip score={scoreOf(d.id)} /></div>
+                      <div style={{ margin: '6px 0', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <PriorityChip score={scoreOf(d.id)} />
+                        <TempControl clientId={d.client_id} temp={tempOf(d.client_id)} />
+                      </div>
                       <div className="num" style={{ fontSize: 19, fontWeight: 800 }}>
                         {Math.round(d.amount).toLocaleString('uk-UA')} ₴</div>
                       {d.stage === 'won' && !d.converted_order_id && (
                         <button onClick={(e) => { e.stopPropagation(); setConvertFor(d); }}>→ замовлення</button>
                       )}
-                      {d.converted_order_id && <Badge tone="ok">Замовлення ✓</Badge>}
+                      {d.converted_order_id && (
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          setLinkMenu(linkMenu === d.id ? null : d.id);
+                          setLinkConfirm(false);
+                          setLinkErr('');
+                        }}
+                          style={{ background: 'var(--success)', color: 'var(--primary-fg)',
+                            border: 'none', borderRadius: 12, padding: '3px 10px',
+                            fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          Замовлення ✓
+                        </button>
+                      )}
+                      {linkMenu === d.id && (
+                        <div onClick={(e) => e.stopPropagation()}
+                          style={{ marginTop: 6, padding: 8, borderRadius: 8,
+                            background: 'var(--bg-hover)', display: 'flex',
+                            flexDirection: 'column', gap: 6 }}>
+                          {!linkConfirm ? (
+                            <>
+                              <button onClick={() => nav(`/orders?order=${d.converted_order_id}`)}>
+                                Відкрити замовлення
+                              </button>
+                              <button onClick={() => setLinkConfirm(true)}>
+                                Розірвати звʼязок
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontSize: 12 }}>
+                                Прибрати звʼязок? Замовлення лишиться у списку.
+                              </span>
+                              <span style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => doUnlink(d)}>Так</button>
+                                <button onClick={() => setLinkConfirm(false)}>Ні</button>
+                              </span>
+                            </>
+                          )}
+                          {linkErr && <span style={{ fontSize: 12, color: 'var(--danger)' }}>{linkErr}</span>}
+                        </div>
+                      )}
                     </div>
                   );
                   const ph = (over?.col === s && over.index === i) ? (
@@ -386,12 +495,17 @@ export default function Deals() {
       ) : (
         <Card>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-            <thead><tr><th>Назва</th><th>Стадія</th><th>Сума</th><th></th></tr></thead>
+            <thead><tr><th>Назва</th><th>Стадія</th><th>Сума</th><th>Температура</th><th></th></tr></thead>
             <tbody>
               {deals.map((d) => (
                 <tr key={d.id} style={{ borderTop: '1px solid var(--border)', cursor: 'pointer' }}
                   onClick={() => openEdit(d)}>
-                  <td>{d.title}</td>
+                  <td>
+                    <div>{d.title}</div>
+                    {nameOf(d.client_id) && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{nameOf(d.client_id)}</div>
+                    )}
+                  </td>
                   <td>
                     <Select value={d.stage} aria-label={`Стадія ${d.title}`}
                       onClick={(e) => e.stopPropagation()}
@@ -405,8 +519,21 @@ export default function Deals() {
                     </Select>
                   </td>
                   <td className="num">{Math.round(d.amount).toLocaleString('uk-UA')} ₴</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <TempControl clientId={d.client_id} temp={tempOf(d.client_id)} />
+                  </td>
                   <td>{d.stage === 'won' && !d.converted_order_id && (
-                    <button onClick={(e) => { e.stopPropagation(); setConvertFor(d); }}>→ замовлення</button>)}</td>
+                    <button onClick={(e) => { e.stopPropagation(); setConvertFor(d); }}>→ замовлення</button>)}
+                    {d.converted_order_id && (
+                      <span style={{ display: 'inline-flex', gap: 4 }}>
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          nav(`/orders?order=${d.converted_order_id}`);
+                        }}>Замовлення ✓</button>
+                        <button onClick={(e) => { e.stopPropagation(); doUnlink(d); }}
+                          title="Розірвати звʼязок (замовлення лишиться)">✕</button>
+                      </span>
+                    )}</td>
                 </tr>
               ))}
             </tbody>
