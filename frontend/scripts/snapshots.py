@@ -41,6 +41,8 @@ def main() -> int:
     ap.add_argument("--out", default="snapshots")
     ap.add_argument("--serve", default="",
                     help="поднять vite preview из dist/: --serve 4173")
+    ap.add_argument("--reduced", action="store_true",
+                    help="prefers-reduced-motion + анімації off: нічого не має рухатись")
     args = ap.parse_args()
 
     import pathlib
@@ -77,7 +79,9 @@ def main() -> int:
 def run(args) -> int:
     import pathlib
     out = pathlib.Path(__file__).parent.parent / args.out
-    out.mkdir(exist_ok=True)
+    if args.reduced:
+        out = out / "reduced"
+    out.mkdir(exist_ok=True, parents=True)
 
     token, tag = register(args.api)
     print("registered", tag)
@@ -86,10 +90,16 @@ def run(args) -> int:
         browser = p.chromium.launch()
         for w, h in VIEWPORTS:
             for theme in THEMES:
-                ctx = browser.new_context(viewport={"width": w, "height": h})
+                ctx = browser.new_context(
+                    viewport={"width": w, "height": h},
+                    reduced_motion="reduce" if args.reduced else "no-preference",
+                )
                 ctx.add_init_script(
                     f"localStorage.setItem('leleka-token','{token}');"
                     f"localStorage.setItem('leleka.themeMode','{theme}');"
+                    + ("localStorage.setItem('leleka.animations','off');"
+                       "localStorage.setItem('leleka.celebration','compact');"
+                       if args.reduced else "")
                 )
                 page = ctx.new_page()
                 errors: list[str] = []

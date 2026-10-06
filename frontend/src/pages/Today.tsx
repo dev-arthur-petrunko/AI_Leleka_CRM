@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ArrowRight, CheckCircle2, CheckSquare, Circle, Inbox, ShoppingCart, Sparkles } from 'lucide-react';
@@ -39,15 +40,40 @@ function Onboarding() {
   });
   const rules = useQuery({ queryKey: ['ob-rules'], queryFn: () => api<any[]>('/automations/rules') });
   const billing = useQuery({ queryKey: ['ob-billing'], queryFn: () => api<any>('/billing/current') });
-  if (integ.isLoading || orders.isLoading || rules.isLoading || billing.isLoading) return null;
+  const loading = integ.isLoading || orders.isLoading || rules.isLoading || billing.isLoading;
   const steps = [
-    { done: (integ.data || []).some((x: any) => x.has_key), label: 'Підключіть магазин', to: '/integrations' },
-    { done: (orders.data?.total || 0) > 0, label: 'Отримайте перше замовлення', to: '/orders' },
-    { done: (rules.data || []).length > 0, label: 'Увімкніть 5 правил', to: '/automations' },
-    { done: (billing.data?.seats_used || 1) > 1, label: 'Запросіть команду', to: '/billing' },
+    { done: !loading && (integ.data || []).some((x: any) => x.has_key), label: 'Підключіть магазин', to: '/integrations' },
+    { done: !loading && (orders.data?.total || 0) > 0, label: 'Отримайте перше замовлення', to: '/orders' },
+    { done: !loading && (rules.data || []).length > 0, label: 'Увімкніть 5 правил', to: '/automations' },
+    { done: !loading && (billing.data?.seats_used || 1) > 1, label: 'Запросіть команду', to: '/billing' },
   ];
   const done = steps.filter((s) => s.done).length;
-  if (done === steps.length) return null;
+  const total = steps.length;
+  // 100% святкуємо один раз маленьким конфетті — і більше не повторюємо.
+  // Хук ДО early-return: інакше кількість хуків плаває між рендерами (#310).
+  useEffect(() => {
+    if (loading || done !== total) return;
+    let seen = false;
+    try {
+      seen = !!localStorage.getItem('leleka.onboarded');
+    } catch { /* ignore */ }
+    if (seen) return;
+    try {
+      localStorage.setItem('leleka.onboarded', '1');
+    } catch { /* ignore */ }
+    (async () => {
+      try {
+        const { loadAnim } = await import('../theme');
+        if (loadAnim() !== 'all') return;
+        const { default: confetti } = await import('canvas-confetti');
+        confetti({ particleCount: 70, spread: 100, origin: { y: 0.3 },
+          colors: ['#BD5A2A', '#2C5A5B', '#F7F2E9', '#D9A441'],
+          disableForReducedMotion: true });
+      } catch { /* ignore */ }
+    })();
+  }, [loading, done, total]);
+  if (loading) return null;
+  if (done === total) return null;
   return (
     <Card style={{ borderLeft: '4px solid var(--info)' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
@@ -112,7 +138,7 @@ export default function Today() {
         const Icon = KIND_ICON[kind] || CheckSquare;
         const tone = KIND_TONE[kind] || 'var(--info)';
         return (
-          <section key={kind} aria-label={KIND_TITLE[kind] || kind}>
+          <section key={kind} aria-label={KIND_TITLE[kind] || kind} className="data-in">
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '4px 2px 8px' }}>
               <h3 style={{ margin: 0, fontSize: 15 }}>{KIND_TITLE[kind] || kind}</h3>
               <span className="num" style={{ color: 'var(--text-muted)', fontSize: 13 }}>{groups[kind].length}</span>

@@ -29,6 +29,7 @@ export default function ClientDrawer({ client, onClose }: { client: Client; onCl
   const [channel, setChannel] = useState('telegram');
   const [subject, setSubject] = useState('');
   const [preview, setPreview] = useState<any>(null);
+  const [previewing, setPreviewing] = useState(false);
   const [msg, setMsg] = useState('');
   const [confirmDel, setConfirmDel] = useState(false);
   const [confirmErase, setConfirmErase] = useState(false);
@@ -43,11 +44,14 @@ export default function ClientDrawer({ client, onClose }: { client: Client; onCl
 
   async function doPreview() {
     setMsg(''); setPreview(null);
+    setPreviewing(true);
     try {
       const r = await api<any>(`/clients/${client.id}/message-preview?channel=${channel}`);
       setPreview(r);
     } catch {
       setMsg('Не вдалося згенерувати перегляд.');
+    } finally {
+      setPreviewing(false);
     }
   }
   async function send() {
@@ -189,9 +193,18 @@ export default function ClientDrawer({ client, onClose }: { client: Client; onCl
           <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             Текст складає сервер (AI або шаблон). Шаблони — у «Вхідні» та автоматизаціях.
           </p>
+          {previewing && (
+            <div role="status" aria-label="AI думає" className="typing" style={{ marginTop: 8 }}>
+              <span /><span /><span />
+            </div>
+          )}
           {preview && (
             <Card style={{ marginTop: 8, padding: 12, background: 'var(--bg-hover)' }}>
-              <div style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{preview.text}</div>
+              {(String(preview.text || '').split('\n')).map((line: string, i: number) => (
+                <div key={i} className="line-in" style={{ animationDelay: `${i * 120}ms` }}>
+                  {line || ' '}
+                </div>
+              ))}
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
                 {preview.ai_used ? 'AI-текст (без персональних даних у запиті).' : 'Локальний шаблон.'}
                 {!preview.can_send && preview.send_hint ? ` ${preview.send_hint}` : ''}

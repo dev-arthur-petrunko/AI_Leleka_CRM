@@ -20,6 +20,7 @@ export function resolveTheme(mode: ThemeMode, now = new Date(), tz = 'Europe/Kyi
 }
 
 export type AnimMode = 'all' | 'min' | 'off';
+export type CelebrateMode = 'full' | 'compact';
 
 export function applyTheme(t: Theme) {
   const swap = () => {
@@ -55,6 +56,27 @@ export function loadAnim(): AnimMode {
   }
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return 'min';
   return 'all';
+}
+
+/** Святкування виграшу: повний екран або компактно. Сервер — джерело правди. */
+export function applyCelebration(m: CelebrateMode) {
+  document.documentElement.dataset.celebration = m;
+  try {
+    localStorage.setItem('leleka.celebration', m);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadCelebration(): CelebrateMode {
+  try {
+    const c = document.documentElement.dataset.celebration
+      || localStorage.getItem('leleka.celebration');
+    if (c === 'compact') return 'compact';
+  } catch {
+    /* ignore */
+  }
+  return 'full';
 }
 
 export function loadMode(): ThemeMode {

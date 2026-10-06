@@ -26,10 +26,24 @@ function ColSum({ value }: { value: number }) {
     <span className="num">{Math.round(v).toLocaleString('uk-UA')} ₴</span>
   );
 }
-
-function PriorityChip({ score }: { score?: number }) {  const s = score ?? 50;  const Icon = s >= 70 ? Flame : s >= 40 ? Sun : Snowflake;
+function PriorityChip({ score }: { score?: number }) {  const s = score ?? 50;
+  const Icon = s >= 70 ? Flame : s >= 40 ? Sun : Snowflake;
   const label = s >= 70 ? t('score.hot') : s >= 40 ? t('score.warm') : t('score.cold');
   const tone = s >= 70 ? 'bad' : s >= 40 ? 'warn' : 'info';
+  if (s >= 70) {
+    return (
+      <Badge tone="bad">
+        <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden className="hot-ring">
+            <circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--border)" strokeWidth="2" />
+            <circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--danger)" strokeWidth="2"
+              strokeLinecap="round" className="ring-fg" pathLength={100} />
+          </svg>
+          {label}
+        </span>
+      </Badge>
+    );
+  }
   return <Badge tone={tone as 'bad'}><span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}><Icon size={12} />{label}</span></Badge>;
 }
 
@@ -87,6 +101,7 @@ export default function Deals() {
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [createErr, setCreateErr] = useState('');
+  const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<Deal | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editAmount, setEditAmount] = useState('');
@@ -303,8 +318,9 @@ export default function Deals() {
   }
 
   async function doSave() {
-    if (!editing || !editTitle.trim()) return;
+    if (!editing || !editTitle.trim() || busy) return;
     setEditErr('');
+    setBusy(true);
     try {
       await api(`/deals/${editing.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -318,12 +334,15 @@ export default function Deals() {
       qc.invalidateQueries({ queryKey: ['deals'] });
     } catch {
       setEditErr('Не вдалося зберегти. Перевірте назву і суму.');
+    } finally {
+      setBusy(false);
     }
   }
 
   async function doCreate() {
-    if (!newClient || !newTitle.trim()) return;
+    if (!newClient || !newTitle.trim() || busy) return;
     setCreateErr('');
+    setBusy(true);
     try {
       await api('/deals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -338,6 +357,8 @@ export default function Deals() {
       qc.invalidateQueries({ queryKey: ['deals'] });
     } catch {
       setCreateErr('Не вдалося створити угоду. Спробуйте ще раз.');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -564,7 +585,9 @@ export default function Deals() {
       {creating && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 60,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="glass" style={{ padding: 22, maxWidth: 400, width: '100%' }}>
+          <div key={createErr || 'ok'} className={'glass drawer-in' + (createErr ? ' shake' : '')}
+            onClick={(e) => e.stopPropagation()}
+            style={{ padding: 22, maxWidth: 400, width: '100%' }}>
             <h3>Нова угода</h3>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
               Клієнт
@@ -588,7 +611,10 @@ export default function Deals() {
             </label>
             {createErr && <p style={{ color: 'var(--danger)' }}>{createErr}</p>}
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <Button onClick={doCreate} disabled={!newClient || !newTitle.trim()}>Створити</Button>
+              <Button onClick={doCreate} disabled={busy || !newClient || !newTitle.trim()}
+                style={{ minWidth: 130 }}>
+                {busy ? <span className="spin" aria-hidden /> : 'Створити'}
+              </Button>
               <Button variant="ghost" onClick={() => setCreating(false)}>Скасувати</Button>
             </div>
           </div>
@@ -598,7 +624,8 @@ export default function Deals() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 60,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           onClick={() => setEditing(null)}>
-          <div className="glass drawer-in" onClick={(e) => e.stopPropagation()}
+          <div key={editErr || 'ok'} className={'glass drawer-in' + (editErr ? ' shake' : '')}
+            onClick={(e) => e.stopPropagation()}
             style={{ padding: 22, maxWidth: 400, width: '100%' }}>
             <h3>Редагувати угоду</h3>
             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)' }}>
@@ -625,7 +652,10 @@ export default function Deals() {
             </p>
             {editErr && <p style={{ color: 'var(--danger)' }}>{editErr}</p>}
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <Button onClick={doSave} disabled={!editTitle.trim()}>Зберегти</Button>
+              <Button onClick={doSave} disabled={busy || !editTitle.trim()}
+                style={{ minWidth: 130 }}>
+                {busy ? <span className="spin" aria-hidden /> : 'Зберегти'}
+              </Button>
               <Button variant="ghost" onClick={() => setEditing(null)}>Скасувати</Button>
             </div>
           </div>

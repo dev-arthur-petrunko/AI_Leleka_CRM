@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Select, Skeleton } from '../components/ui';
-import { applyAnim, applyTheme, resolveTheme, saveMode, ThemeMode } from '../theme';
+import { applyAnim, applyCelebration, applyTheme, resolveTheme, saveMode, ThemeMode } from '../theme';
 
 const MODES: ThemeMode[] = ['auto-time', 'morning', 'evening', 'system', 'telegram'];
 const MODE_LABEL: Record<ThemeMode, string> = {
@@ -18,11 +18,17 @@ export default function SettingsPage() {
   const [fLabel, setFLabel] = useState('');
   const [fType, setFType] = useState('text');
   const [fMsg, setFMsg] = useState('');
+  const [celebr, setCelebr] = useState<string>(() => {
+    try { return localStorage.getItem('leleka.celebration') || 'full'; }
+    catch { return 'full'; }
+  });
   // сервер міг перевизначити режим (інший пристрій) — підтягуємо при вході
   useEffect(() => {
     try {
       const a = document.documentElement.dataset.anim;
       if (a === 'all' || a === 'min' || a === 'off') setAnim(a);
+      const c = document.documentElement.dataset.celebration;
+      if (c === 'full' || c === 'compact') setCelebr(c);
     } catch { /* ignore */ }
   }, []);
   const [mode, setMode] = useState<ThemeMode>(() => {
@@ -65,6 +71,25 @@ export default function SettingsPage() {
             </Button>
           ))}
         </div>
+        <h3 style={{ marginTop: 16 }}>Святкування виграшу</h3>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[['full', 'Повне'], ['compact', 'Компактне']].map(([v, label]) => (
+            <Button key={v} variant={celebr === v ? 'primary' : 'ghost'}
+              onClick={async () => {
+                setCelebr(v);
+                applyCelebration(v as 'full' | 'compact');
+                await api('/auth/me/preferences', { method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ preferences: { celebration: v } }) }).catch(() => null);
+              }}>
+              {label}
+            </Button>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          Повне — свято на весь екран; компактне — тост + лелека з пакетом.
+          Великі угоди (від 50 000 ₴) святкуємо на весь екран завжди.
+        </p>
       </Card>
       <Card style={{ marginBottom: 12 }}>
         <h3>Команда і безпека</h3>

@@ -143,11 +143,16 @@ function Body(props: {
 
       {idx >= 0 ? (
         <div aria-label="Статус замовлення">
-          <div className="step-line">
+          <div className="step-line" style={{ position: 'relative', paddingTop: 20 }}>
+            <Truck size={18} aria-hidden className="truck-drive"
+              style={{ position: 'absolute', top: 0,
+                left: `calc(${(idx / Math.max(1, FLOW.length - 1)) * 100}% - 9px)`,
+                color: 'var(--warning)' }} />
             {FLOW.map((s, i) => (
               <span key={s} className={'step-dot' + (i <= idx ? ' done' : '') + (i === idx ? ' cur' : '')}
                 title={t('order.' + s)}>
-                {s === 'shipped' && i <= idx && <Truck size={13} aria-hidden className="truck-run" />}
+                {s === 'delivered' && i <= idx && (
+                  <span style={{ fontSize: 11, fontWeight: 800 }}>✓</span>)}
               </span>
             ))}
           </div>
@@ -156,7 +161,12 @@ function Body(props: {
           </div>
         </div>
       ) : (
-        <p style={{ color: 'var(--text-muted)' }}>{t('order.' + o.status)}</p>
+        <p style={{ color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {o.status === 'returned' && (
+            <Truck size={16} aria-hidden style={{ color: 'var(--danger)' }} />
+          )}
+          {t('order.' + o.status)}
+        </p>
       )}
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap' }}>

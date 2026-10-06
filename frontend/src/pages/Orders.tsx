@@ -117,7 +117,7 @@ export default function Orders() {
             <Link to="/deals"><Button variant="ghost">До угод</Button></Link>
           </span>} /></Card>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(330px,1fr))', gap: 12 }}>
+      <div className="data-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(330px,1fr))', gap: 12 }}>
         {data.items.map((o) => (
           <Card key={o.id} style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
             cursor: 'pointer', ...(flash.has(o.id) ? { animation: 'orderFlash 1.2s ease-out' } : {}) }}

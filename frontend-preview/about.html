@@ -332,5 +332,45 @@ footer{padding:26px 0;color:var(--ink-soft);font-size:13px;text-align:center}
 підтримка: <a href="mailto:hello@leleka.crm" style="color:inherit">hello@leleka.crm</a> ·
 <a href="login.html?mode=register" style="color:inherit">Бета: приєднуйтесь</a></footer>
 
+
+<style>
+@media (prefers-reduced-motion: no-preference) {
+  .rv { opacity: 0; transform: translateY(18px); transition: opacity .6s ease-out, transform .6s ease-out; }
+  .rv.on { opacity: 1; transform: none; }
+  .float { animation: floatY 5s ease-in-out infinite; }
+  @keyframes floatY { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+}
+</style>
+<script>
+(function () {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('section, .stat').forEach(function (el) {
+    el.classList.add('rv');
+    io.observe(el);
+  });
+  var hero = document.querySelector('.art img');
+  if (hero) hero.classList.add('float');
+  document.querySelectorAll('.stat b').forEach(function (el) {
+    var m = el.textContent.match(/\d+/);
+    if (!m) return;
+    var target = parseInt(m[0], 10), t0 = null;
+    function tick(now) {
+      if (!t0) t0 = now;
+      var p = Math.min(1, (now - t0) / 900);
+      el.textContent = el.textContent.replace(/\d+/, String(Math.round(target * (1 - Math.pow(1 - p, 3)))));
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    new IntersectionObserver(function (es, o) {
+      if (es[0].isIntersecting) { requestAnimationFrame(tick); o.disconnect(); }
+    }, { threshold: 0.4 }).observe(el);
+  });
+})();
+</script>
+</body>
 </body>
 </html>

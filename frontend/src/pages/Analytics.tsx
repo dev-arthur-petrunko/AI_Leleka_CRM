@@ -5,7 +5,10 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { AlertTriangle, Banknote, Crown, Repeat, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import { api } from '../api';
 import { useCountUp } from '../hooks/useCountUp';
+import { loadAnim } from '../theme';
 import { Card, Badge, EmptyState, ErrorState, Skeleton, Tabs } from '../components/ui';
+
+const CHART_ANIM = () => loadAnim() === 'all';
 import { t } from '../i18n';
 
 const PERIODS = ['7', '30', '90'];
@@ -94,7 +97,7 @@ export default function Analytics() {
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} domain={[0, 'auto']} allowDecimals={false} width={48} />
                 <Tooltip />
-                <Bar dataKey="total" name="Виручка, ₴" fill="var(--info)" radius={[6, 6, 0, 0]}
+                <Bar isAnimationActive={CHART_ANIM()} dataKey="total" name="Виручка, ₴" fill="var(--info)" radius={[6, 6, 0, 0]}
                   label={{ position: 'top', fontSize: 10, fill: 'var(--text-muted)' }} />
               </BarChart>
             </ResponsiveContainer>
@@ -111,7 +114,7 @@ export default function Analytics() {
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} domain={[0, 'auto']} allowDecimals={false} width={40} />
                 <Tooltip />
-                <Line type="monotone" dataKey="count" name="Замовлень" stroke="var(--success)" strokeWidth={2} dot={false} />
+                <Line isAnimationActive={CHART_ANIM()} type="monotone" dataKey="count" name="Замовлень" stroke="var(--success)" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -420,9 +423,9 @@ function ForecastChart({ history, next }: { history: { m: string; v: number }[];
         <XAxis dataKey="m" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
         <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} domain={[0, 'auto']} width={52} />
         <Tooltip />
-        <Line type="monotone" dataKey="v" name="Факт" stroke="var(--success)" strokeWidth={2} dot={false} />
+        <Line isAnimationActive={CHART_ANIM()} type="monotone" dataKey="v" name="Факт" stroke="var(--success)" strokeWidth={2} dot={false} />
         {typeof next === 'number' && (
-          <Line type="monotone" dataKey="f" name="Прогноз" stroke="var(--warning)"
+          <Line isAnimationActive={CHART_ANIM()} type="monotone" dataKey="f" name="Прогноз" stroke="var(--warning)"
             strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} connectNulls />
         )}
       </LineChart>

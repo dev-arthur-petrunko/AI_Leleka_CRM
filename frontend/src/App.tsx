@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3, Bell, CheckSquare, ChevronLeft, ChevronRight, Crown, Ellipsis, Home, Inbox, KanbanSquare,
@@ -250,6 +250,13 @@ export default function App() {
   });
   const [badges, setBadges] = useState<Record<string, number | boolean>>({});
   const [me, setMe] = useState<any>(null);
+  const [swingKey, setSwingKey] = useState(0);
+  const prevNotif = useRef(0);
+  useEffect(() => {
+    const n = Number(badges.notifications || 0);
+    if (n > prevNotif.current) setSwingKey((k) => k + 1);
+    prevNotif.current = n;
+  }, [badges.notifications]);
   function setCollapsed(v: boolean) {
     setCollapsedState(v);
     try { localStorage.setItem('leleka.sidebar', v ? '1' : '0'); } catch { /* ignore */ }
@@ -292,6 +299,9 @@ export default function App() {
           const { loadAnim } = await import('./theme');
           applyAnim(loadAnim());
         }
+        const { applyCelebration } = await import('./theme');
+        const cel = (meResp as any)?.preferences?.celebration;
+        if (cel === 'full' || cel === 'compact') applyCelebration(cel);
       } catch { /* ignore */ }
       } catch { /* без звʼязку бейджі лишаються порожніми */ }
     })();
@@ -375,9 +385,12 @@ export default function App() {
             <CreateMenu />
             <Link to="/notifications" aria-label="Сповіщення" title="Сповіщення"
               style={{ ...iconBtn, position: 'relative', textDecoration: 'none' }}>
-              <Bell size={18} aria-hidden />
+              <span key={swingKey} className={swingKey ? 'bell-swing' : undefined}
+                style={{ display: 'inline-flex' }}>
+                <Bell size={18} aria-hidden />
+              </span>
               {Number(badges.notifications || 0) > 0 && (
-                <span aria-hidden className="pulse-dot"
+                <span key={'b' + String(badges.notifications)} aria-hidden className="pulse-dot badge-pop"
                   style={{ position: 'absolute', top: 8, right: 8, minWidth: 16, height: 16,
                     borderRadius: 8, background: 'var(--danger)', color: 'var(--primary-fg)',
                     fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center',
@@ -386,9 +399,16 @@ export default function App() {
                 </span>
               )}
             </Link>
-            <button onClick={() => setMode(mode === 'evening' ? 'morning' : 'evening')}
+            <button onClick={(e) => {
+                const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                document.documentElement.style.setProperty('--vx', `${r.left + r.width / 2}px`);
+                document.documentElement.style.setProperty('--vy', `${r.top + r.height / 2}px`);
+                setMode(mode === 'evening' ? 'morning' : 'evening');
+              }}
               aria-label="Тема" title={`${t('theme.morning')} / ${t('theme.evening')} / ${t('theme.auto')}`} style={iconBtn}>
-              {mode === 'evening' ? <Sun size={18} /> : <Moon size={18} />}
+              <span key={mode} className="spin-in" style={{ display: 'inline-flex' }}>
+                {mode === 'evening' ? <Sun size={18} /> : <Moon size={18} />}
+              </span>
             </button>
             {!authed && <Link to="/login">Увійти</Link>}
           </header>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bird } from 'lucide-react';
+import poseHello from '../assets/brand/pose-hello.webp';
 
 type P = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' | 'danger' };
 
@@ -75,10 +75,15 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: React.ReactNode }) {
+export function EmptyState({ title, hint, action, mascot = true }: {
+  title: string; hint?: string; action?: React.ReactNode; mascot?: boolean;
+}) {
   return (
     <div style={{ textAlign: 'center', padding: 28, color: 'var(--text-muted)' }}>
-      <Bird size={30} aria-hidden className="sway" style={{ color: 'var(--text-muted)', opacity: 0.7 }} />
+      {mascot && (
+        <img src={poseHello} alt="" aria-hidden width={64} height={64}
+          className="sway" style={{ objectFit: 'contain' }} />
+      )}
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginTop: 6 }}>{title}</div>
       {hint && <div style={{ fontSize: 13, marginTop: 4 }}>{hint}</div>}
       {action && <div style={{ marginTop: 12 }}>{action}</div>}
@@ -96,12 +101,26 @@ export function ErrorState({ onRetry }: { onRetry?: () => void }) {
 }
 
 export function Tabs({ tabs, value, onChange }: { tabs: string[]; value: string; onChange: (v: string) => void }) {
+  const boxRef = React.useRef<HTMLDivElement | null>(null);
+  const [ind, setInd] = React.useState({ left: 0, width: 0 });
+  React.useLayoutEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const btns = Array.from(box.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const i = tabs.indexOf(value);
+    const el = btns[i];
+    if (el) setInd({ left: el.offsetLeft, width: el.offsetWidth });
+  }, [tabs, value]);
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 12 }} role="tablist">
+    <div ref={boxRef} style={{ display: 'flex', gap: 8, marginBottom: 12, position: 'relative' }} role="tablist">
+      <span aria-hidden
+        style={{ position: 'absolute', top: 0, bottom: 0, left: ind.left, width: ind.width,
+          borderRadius: 20, background: 'var(--primary)',
+          transition: 'left var(--dur-200) var(--ease-out), width var(--dur-200) var(--ease-out)' }} />
       {tabs.map((t) => (
         <button key={t} role="tab" aria-selected={value === t} onClick={() => onChange(t)}
           style={{ padding: '8px 14px', borderRadius: 20, border: '1px solid var(--border)',
-            background: value === t ? 'var(--primary)' : 'transparent',
+            background: 'transparent', position: 'relative', zIndex: 1,
             color: value === t ? 'var(--primary-fg)' : 'var(--text-muted)',
             fontWeight: 600, cursor: 'pointer' }}>{t}</button>
       ))}

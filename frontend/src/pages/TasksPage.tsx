@@ -40,8 +40,21 @@ export default function TasksPage() {
       qc.invalidateQueries({ queryKey: ['tasks'] });
     } catch { /* помилка створення — список лишається, видно при наступному refetch */ }
   }
-  async function toggle(t: Task) {
-    const next = t.status === 'open' ? 'done' : 'open';
+  const [leavingId, setLeavingId] = useState<string | null>(null);
+  // дія з анімацією виходу: рядок складається 200мс, потім виклик
+  async function act(t: Task, kind: 'toggle' | 'reopen' | 'remove') {
+    if (leavingId) return;
+    setLeavingId(t.id);
+    await new Promise((r) => setTimeout(r, 200));
+    setLeavingId(null);
+    if (kind === 'remove') {
+      try {
+        await api(`/tasks/${t.id}`, { method: 'DELETE' });
+        qc.invalidateQueries({ queryKey: ['tasks'] });
+      } catch { /* ignore */ }
+      return;
+    }
+    const next = kind === 'reopen' ? 'open' : 'done';
     qc.setQueryData<Task[]>(['tasks'], (old) =>
       (old || []).map((x) => (x.id === t.id ? { ...x, status: next } : x)));
     try {
@@ -52,12 +65,6 @@ export default function TasksPage() {
     } catch {
       qc.invalidateQueries({ queryKey: ['tasks'] });
     }
-  }
-  async function remove(t: Task) {
-    try {
-      await api(`/tasks/${t.id}`, { method: 'DELETE' });
-      qc.invalidateQueries({ queryKey: ['tasks'] });
-    } catch { /* ignore */ }
   }
   if (isLoading) return <Card><Skeleton rows={6} /></Card>;
   if (error || !data) return <Card><ErrorState onRetry={() => refetch()} /></Card>;
@@ -81,11 +88,30 @@ export default function TasksPage() {
               const Prio = task.priority === 'high' ? ArrowUp : task.priority === 'low' ? ArrowDown : Minus;
               const tone = task.priority === 'high' ? 'bad' : task.priority === 'low' ? 'info' : 'warn';
               const label = t('prio.' + (task.priority === 'high' ? 'high' : task.priority === 'low' ? 'low' : 'normal'));
+              const done = task.status !== 'open';
+              const leaving = leavingId === task.id;
               return (
-              <div key={task.id} style={{ display: 'flex', gap: 8, padding: '6px 0', alignItems: 'center' }}>
-                <input type="checkbox" checked={task.status !== 'open'} onChange={() => toggle(task)}
-                  aria-label={task.status === 'open' ? `Виконати: ${task.title}` : `Повернути: ${task.title}`}
-                  style={{ width: 20, height: 20, accentColor: 'var(--primary)', flex: 'none', cursor: 'pointer' }} />
+              <div key={task.id} className={leaving ? 'task-leave' : 'card-in'}
+                style={{ display: 'flex', gap: 8, padding: '6px 0', alignItems: 'center',
+                  overflow: 'hidden' }}>
+                <button onClick={() => act(task, done ? 'reopen' : 'toggle')}
+                  aria-label={done ? `Повернути: ${task.title}` : `Виконати: ${task.title}`}
+                  aria-pressed={done}
+                  style={{ background: 'transparent', border: 'none', padding: 4,
+                    cursor: 'pointer', flex: 'none' }}>
+                  <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden>
+                    <rect x="2" y="2" width="18" height="18" rx="6"
+                      fill={done ? 'var(--success)' : 'transparent'}
+                      stroke={done ? 'var(--success)' : 'var(--border)'}
+                      strokeWidth="2" className="box-pop" />
+                    {done && (
+                      <path d="M6.5 11.5 l3.5 3.5 l6 -8" fill="none"
+                        stroke="var(--primary-fg)" strokeWidth="2.4"
+                        strokeLinecap="round" strokeLinejoin="round"
+                        className="check-draw" />
+                    )}
+                  </svg>
+                </button>
                 <Badge tone={tone as 'bad'}>
                   <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                     <Prio size={12} aria-hidden />{label}
@@ -95,7 +121,7 @@ export default function TasksPage() {
                 <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>
                   {task.due_at ? format(new Date(task.due_at), 'd MMM HH:mm', { locale: uk }) : ''}
                 </span>
-                <button onClick={() => remove(task)} aria-label={`Видалити: ${task.title}`}
+                <button onClick={() => act(task, 'remove')} aria-label={`Видалити: ${task.title}`}
                   style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)',
                     cursor: 'pointer', padding: 6, minHeight: 32 }}>×</button>
               </div>
@@ -105,6 +131,9 @@ export default function TasksPage() {
         );
       })}
       {data.length === 0 && <Card><EmptyState title="Завдань немає" hint="Створіть перше рядком вище." /></Card>}
+      {data.length > 0 && !data.some((t) => t.status === 'open') && (
+        <Card><EmptyState title="Усе зроблено" hint="Немає відкритих завдань. Так тримати!" /></Card>
+      )}
     </div>
   );
 }
