@@ -21,7 +21,8 @@ services:
   api:
     build: ./backend
     # Спочатку миграції (Alembic — джерело правди для схеми), тільки потім API.
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # Повторюємо міграції до успіху, бо DNS може бути ще не готовий.
+    command: sh -c "until alembic upgrade head; do sleep 2; done && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend:/code
     ports:
